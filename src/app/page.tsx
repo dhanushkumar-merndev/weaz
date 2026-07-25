@@ -1,65 +1,71 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useCallback } from "react";
+import Navbar from "@/components/weaz/Navbar";
+import Hero from "@/components/weaz/Hero";
+import About from "@/components/weaz/About";
+import ProgramsOrbit from "@/components/weaz/ProgramsOrbit";
+import ProgramDeepDives from "@/components/weaz/ProgramDeepDives";
+import ComparisonTable from "@/components/weaz/ComparisonTable";
+import CareerOutcomes from "@/components/weaz/CareerOutcomes";
+import Testimonials from "@/components/weaz/Testimonials";
+import FinalCTA from "@/components/weaz/FinalCTA";
+import Footer from "@/components/weaz/Footer";
+import LeadModal from "@/components/weaz/LeadModal";
+import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 
 export default function Home() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [defaultProgram, setDefaultProgram] = useState("");
+
+  const openModal = useCallback((program = "") => {
+    setDefaultProgram(program);
+    setModalOpen(true);
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div
+      data-testid="landing-root"
+      className="relative min-h-screen bg-[#0F0B14] text-white overflow-x-hidden"
+    >
+      {/* Ambient background glows */}
+      <div
+        className="blob blob-purple"
+        style={{ width: 520, height: 520, top: -180, left: -180 }}
+      />
+      <div
+        className="blob blob-purple"
+        style={{ width: 420, height: 420, top: 900, right: -160 }}
+      />
+      <div
+        className="blob blob-gold"
+        style={{ width: 380, height: 380, top: 1700, left: -100 }}
+      />
+      <div
+        className="blob blob-purple"
+        style={{ width: 500, height: 500, top: 2800, right: -160 }}
+      />
+
+      <Navbar onEnroll={() => openModal("")} />
+
+      <main className="relative z-10">
+        <Hero onEnroll={() => openModal("")} />
+        <About />
+        <ProgramsOrbit onEnroll={(p) => openModal(p)} />
+        <ProgramDeepDives onEnroll={(p) => openModal(p)} />
+        <ComparisonTable onEnroll={(p) => openModal(p)} />
+        <CareerOutcomes />
+        <Testimonials />
+        <FinalCTA onEnroll={() => openModal("")} />
+        <Footer />
       </main>
+
+      <LeadModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        defaultProgram={defaultProgram}
+      />
+      <WhatsAppFab />
     </div>
   );
 }
