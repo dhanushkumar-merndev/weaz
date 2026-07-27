@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
+import SmoothScroll from "@/components/SmoothScroll";
 
 export const metadata: Metadata = {
   title: "WEAZ TECH | Digital Entrepreneurship & AI",
@@ -27,8 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" data-scroll-behavior="smooth">
-      <body className="bg-[#0F0B14] text-white antialiased">
-        {children}
+      <body className="bg-[#0F0B14] text-white antialiased" suppressHydrationWarning>
+        <SmoothScroll>
+          {children}
+        </SmoothScroll>
         <Toaster position="top-center" theme="dark" richColors />
       </body>
     </html>

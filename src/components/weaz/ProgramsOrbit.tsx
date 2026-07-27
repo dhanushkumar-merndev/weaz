@@ -51,8 +51,51 @@ const ProgramsOrbit = ({ onEnroll }: ProgramsOrbitProps) => {
           </div>
         </FadeIn>
 
-        {/* Orbit graphic */}
-        <div className="relative mt-16 md:mt-24 mx-auto" style={{ maxWidth: 900 }}>
+        {/* Mobile: stacked cards layout */}
+        <div className="mt-12 space-y-4 md:hidden">
+          {nodes.map((n, idx) => {
+            const Icon = n.icon;
+            return (
+              <motion.button
+                key={n.id}
+                onClick={() => onEnroll(n.title)}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full text-left cursor-pointer group"
+              >
+                <div className="surface-card p-5 border-white/10 hover:border-white/30 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-12 h-12 rounded-xl grid place-items-center shrink-0"
+                      style={{
+                        background: `${n.color}22`,
+                        border: `1px solid ${n.color}55`,
+                      }}
+                    >
+                      <Icon size={20} style={{ color: n.color }} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-display text-base font-bold text-white group-hover:text-[#FBBF24] transition-colors">
+                        {n.title}
+                      </div>
+                      <div className="text-xs text-white/50 mt-0.5">{n.tagline}</div>
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
+          <div className="text-center pt-2">
+            <div className="font-display text-xl font-black tracking-tight text-white/80">WEAZ</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-white/40 mt-1">AI-First Learning</div>
+          </div>
+        </div>
+
+        {/* Desktop: Orbit graphic */}
+        <div className="relative mt-16 md:mt-24 mx-auto hidden md:block" style={{ maxWidth: 900 }}>
           <div className="relative aspect-square">
             {/* Rings */}
             <div className="absolute inset-0 rounded-full border border-white/10" />
