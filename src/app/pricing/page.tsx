@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import gsap from "gsap";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import ComparisonTable from "@/components/weaz/ComparisonTable";
@@ -8,6 +9,7 @@ import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
 import LeadModal from "@/components/weaz/LeadModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
+import { GsapReveal } from "@/components/ui/GsapReveal";
 import { CreditCard, HelpCircle, CheckCircle2, ShieldCheck, ChevronDown, Award, Zap, Layers } from "lucide-react";
 
 const reasonsToChoose = [
@@ -100,16 +102,18 @@ export default function PricingPage() {
         {/* Reasons to Choose WEAZ TECH */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
-                The WEAZ Advantage
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
+                  The WEAZ Advantage
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  8 Reasons to Choose WEAZ TECH
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                8 Reasons to Choose WEAZ TECH
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GsapReveal className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6" stagger={0.08}>
               {reasonsToChoose.map((r, idx) => (
                 <div key={r.title} className="surface-card p-6 border-white/10 flex flex-col justify-between">
                   <div>
@@ -119,13 +123,14 @@ export default function PricingPage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Financial Aid & EMI */}
         <section className="py-20 md:py-28 relative">
           <div className="max-w-7xl mx-auto px-6">
+            <GsapReveal>
             <div className="surface-card p-8 md:p-14 border-white/10">
               <div className="grid lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7">
@@ -164,22 +169,25 @@ export default function PricingPage() {
                 </div>
               </div>
             </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* FAQs */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
           <div className="max-w-4xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
-                Got Questions?
+            <GsapReveal>
+              <div className="text-center mb-16">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
+                  Got Questions?
+                </div>
+                <h2 className="font-display text-4xl md:text-5xl font-black text-white">
+                  Frequently Asked Questions
+                </h2>
               </div>
-              <h2 className="font-display text-4xl md:text-5xl font-black text-white">
-                Frequently Asked Questions
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="space-y-4">
+            <GsapReveal className="space-y-4" stagger={0.08}>
               {faqs.map((faq, idx) => {
                 const isOpen = openFaq === idx;
                 return (
@@ -210,7 +218,7 @@ export default function PricingPage() {
                   </div>
                 );
               })}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 

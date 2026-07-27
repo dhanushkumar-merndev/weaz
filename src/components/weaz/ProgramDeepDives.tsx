@@ -2,6 +2,9 @@
 
 import React from "react";
 import { CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { FadeIn } from "@/components/ui/FadeIn";
+import { ShineButton } from "@/components/ui/ShineButton";
 
 interface ProgramDeepDivesProps {
   onEnroll: (program: string) => void;
@@ -109,100 +112,105 @@ const DeepDive = ({
       className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center py-16 md:py-24"
     >
       <div className={`lg:col-span-6 ${flipped ? "lg:order-2" : ""}`}>
-        <div className="relative aspect-[5/6] rounded-[2rem] overflow-hidden border border-white/10 group">
-          <img
-            src={p.image}
-            alt={p.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F0B14] via-transparent to-transparent" />
-          <div
-            className="absolute inset-0 opacity-70"
-            style={{
-              background: `radial-gradient(ellipse at ${
-                flipped ? "left top" : "right top"
-              }, ${p.accent}33, transparent 60%)`,
-            }}
-          />
-          <div className="absolute bottom-6 left-6 right-6 flex items-center gap-3">
-            <div
-              className="w-2 h-2 rounded-full animate-pulse"
-              style={{ background: p.accent }}
+        <FadeIn direction={flipped ? "left" : "right"}>
+          <div className="relative aspect-[5/6] rounded-[2rem] overflow-hidden border border-white/10 group shadow-2xl">
+            <img
+              src={p.image}
+              alt={p.title}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <span className="text-xs uppercase tracking-[0.25em] text-white/80">
-              {p.tag}
-            </span>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0F0B14] via-transparent to-transparent" />
+            <div
+              className="absolute inset-0 opacity-70"
+              style={{
+                background: `radial-gradient(ellipse at ${
+                  flipped ? "left top" : "right top"
+                }, ${p.accent}33, transparent 60%)`,
+              }}
+            />
+            <div className="absolute bottom-6 left-6 right-6 flex items-center gap-3">
+              <div
+                className="w-2.5 h-2.5 rounded-full animate-pulse"
+                style={{ background: p.accent }}
+              />
+              <span className="text-xs uppercase tracking-[0.25em] text-white/90 font-semibold">
+                {p.tag}
+              </span>
+            </div>
           </div>
-        </div>
+        </FadeIn>
       </div>
 
       <div className={`lg:col-span-6 ${flipped ? "lg:order-1" : ""}`}>
-        <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] uppercase tracking-[0.25em] font-bold"
-          style={{
-            background: `${p.accent}18`,
-            border: `1px solid ${p.accent}55`,
-            color: p.accent,
-          }}
-        >
-          <Clock size={13} />
-          {p.tag}
-        </div>
-
-        <h3 className="mt-5 font-display text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white">
-          {p.title}
-        </h3>
-        <div className="mt-2 text-lg md:text-xl text-white/60">{p.subtitle}</div>
-
-        <p className="mt-6 text-white/70 leading-relaxed max-w-xl">
-          {p.description}
-        </p>
-
-        <div className="mt-8 grid sm:grid-cols-2 gap-6">
-          <div>
-            <div className="text-xs uppercase tracking-[0.25em] font-bold text-white/50 mb-3">
-              Modules
-            </div>
-            <ul className="space-y-2">
-              {p.modules.map((m) => (
-                <li key={m} className="flex items-start gap-2 text-sm text-white/80">
-                  <span
-                    className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: p.accent }}
-                  />
-                  {m}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-[0.25em] font-bold text-white/50 mb-3">
-              Curriculum
-            </div>
-            <ul className="space-y-2">
-              {p.curriculum.map((c) => (
-                <li key={c} className="flex items-start gap-2 text-sm text-white/80">
-                  <CheckCircle2
-                    size={14}
-                    style={{ color: p.accent }}
-                    className="mt-0.5 shrink-0"
-                  />
-                  <span>{c}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="mt-10">
-          <button
-            data-testid={`program-${p.id}-enroll-btn`}
-            onClick={() => onEnroll(p.title)}
-            className="pill-gold px-7 py-3.5 inline-flex items-center gap-2 cursor-pointer"
+        <FadeIn direction={flipped ? "right" : "left"}>
+          <div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] uppercase tracking-[0.25em] font-bold"
+            style={{
+              background: `${p.accent}18`,
+              border: `1px solid ${p.accent}55`,
+              color: p.accent,
+            }}
           >
-            Apply for {p.title.split(" ")[0]} <ArrowRight size={16} />
-          </button>
-        </div>
+            <Clock size={13} />
+            {p.tag}
+          </div>
+
+          <h3 className="mt-5 font-display text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white">
+            {p.title}
+          </h3>
+          <div className="mt-2 text-lg md:text-xl text-white/60">{p.subtitle}</div>
+
+          <p className="mt-6 text-white/70 leading-relaxed max-w-xl text-sm md:text-base">
+            {p.description}
+          </p>
+
+          <div className="mt-8 grid sm:grid-cols-2 gap-6">
+            <div>
+              <div className="text-xs uppercase tracking-[0.25em] font-bold text-white/50 mb-3">
+                Modules
+              </div>
+              <ul className="space-y-2">
+                {p.modules.map((m) => (
+                  <li key={m} className="flex items-start gap-2 text-sm text-white/80">
+                    <span
+                      className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: p.accent }}
+                    />
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.25em] font-bold text-white/50 mb-3">
+                Curriculum
+              </div>
+              <ul className="space-y-2">
+                {p.curriculum.map((c) => (
+                  <li key={c} className="flex items-start gap-2 text-sm text-white/80">
+                    <CheckCircle2
+                      size={14}
+                      style={{ color: p.accent }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10">
+            <ShineButton
+              data-testid={`program-${p.id}-enroll-btn`}
+              onClick={() => onEnroll(p.title)}
+              variant="gold"
+              className="px-7 py-3.5"
+            >
+              Apply for {p.title.split(" ")[0]} <ArrowRight size={16} />
+            </ShineButton>
+          </div>
+        </FadeIn>
       </div>
     </div>
   );
@@ -210,16 +218,18 @@ const DeepDive = ({
 
 const ProgramDeepDives = ({ onEnroll }: ProgramDeepDivesProps) => {
   return (
-    <section data-testid="program-deepdives-section" className="relative py-16 md:py-24">
+    <section data-testid="program-deepdives-section" className="relative py-16 md:py-24 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="max-w-3xl">
-          <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-4">
-            Program Deep Dives
+        <FadeIn direction="up">
+          <div className="max-w-3xl">
+            <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-4">
+              Program Deep Dives
+            </div>
+            <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white">
+              Choose Your Track
+            </h2>
           </div>
-          <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white">
-            Choose Your Track
-          </h2>
-        </div>
+        </FadeIn>
         <div className="mt-6 divide-y divide-white/5">
           {programs.map((p, i) => (
             <DeepDive key={p.id} p={p} index={i} onEnroll={onEnroll} />

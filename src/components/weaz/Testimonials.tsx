@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { Quote, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FadeIn } from "@/components/ui/FadeIn";
 
 const testimonials = [
   {
@@ -39,52 +41,67 @@ const Testimonials = () => {
   const t = testimonials[i];
 
   return (
-    <section data-testid="testimonials-section" className="relative py-24 md:py-32">
+    <section data-testid="testimonials-section" className="relative py-24 md:py-32 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid lg:grid-cols-12 gap-10 items-end">
-          <div className="lg:col-span-6">
-            <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-4">
-              Alumni Voices
-            </div>
-            <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white">
-              Real people.
-              <br />
-              <span className="text-white/60">Real outcomes.</span>
-            </h2>
-          </div>
-          <div className="lg:col-span-6 text-white/50 text-sm">
-            Sample stories from our growing community — edit these once your first cohort graduates.
-          </div>
-        </div>
-
-        <div className="mt-14 surface-card p-8 md:p-14 relative overflow-hidden">
-          <Quote size={80} className="absolute -top-6 -right-4 text-[#9B59D0]/10 pointer-events-none" />
-          <div className="flex gap-1 mb-8">
-            {[...Array(5)].map((_, k) => (
-              <Star key={k} size={14} className="text-[#FBBF24]" fill="#FBBF24" />
-            ))}
-          </div>
-
-          <blockquote
-            data-testid="testimonial-quote"
-            className="font-display text-2xl md:text-3xl lg:text-4xl leading-snug font-medium max-w-4xl text-white"
-          >
-            &ldquo;{t.quote}&rdquo;
-          </blockquote>
-
-          <div className="mt-10 flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <div className="font-semibold text-lg text-white">{t.name}</div>
-              <div className="text-sm text-white/50">
-                {t.role} · <span className="text-[#9B59D0]">{t.program}</span>
+        <FadeIn direction="up">
+          <div className="grid lg:grid-cols-12 gap-10 items-end">
+            <div className="lg:col-span-6">
+              <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-4">
+                Alumni Voices
               </div>
+              <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white">
+                Real people.
+                <br />
+                <span className="text-white/60">Real outcomes.</span>
+              </h2>
+            </div>
+            <div className="lg:col-span-6 text-white/50 text-sm">
+              Sample stories from our growing community — edit these once your first cohort graduates.
+            </div>
+          </div>
+        </FadeIn>
+
+        <FadeIn direction="up" delay={0.15}>
+          <div className="mt-14 surface-card p-8 md:p-14 relative overflow-hidden min-h-[320px] flex flex-col justify-between">
+            <Quote size={80} className="absolute -top-6 -right-4 text-[#9B59D0]/10 pointer-events-none" />
+            <div className="flex gap-1 mb-8">
+              {[...Array(5)].map((_, k) => (
+                <Star key={k} size={14} className="text-[#FBBF24]" fill="#FBBF24" />
+              ))}
             </div>
 
-            <div className="flex items-center gap-3">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+                className="flex-1"
+              >
+                <blockquote
+                  data-testid="testimonial-quote"
+                  className="font-display text-2xl md:text-3xl lg:text-4xl leading-snug font-medium max-w-4xl text-white"
+                >
+                  &ldquo;{t.quote}&rdquo;
+                </blockquote>
+
+                <div className="mt-10 flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <div className="font-semibold text-lg text-white">{t.name}</div>
+                    <div className="text-sm text-white/50">
+                      {t.role} · <span className="text-[#9B59D0] font-medium">{t.program}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-end gap-3">
               <button
                 data-testid="testimonial-prev"
                 onClick={() => setI((i - 1 + testimonials.length) % testimonials.length)}
-                className="w-11 h-11 rounded-full border border-white/10 grid place-items-center hover:border-white/40 transition-colors text-white cursor-pointer"
+                className="w-11 h-11 rounded-full border border-white/10 grid place-items-center hover:border-[#FBBF24] hover:text-[#FBBF24] transition-all text-white cursor-pointer"
                 aria-label="Previous testimonial"
               >
                 <ChevronLeft size={18} />
@@ -92,14 +109,14 @@ const Testimonials = () => {
               <button
                 data-testid="testimonial-next"
                 onClick={() => setI((i + 1) % testimonials.length)}
-                className="w-11 h-11 rounded-full border border-white/10 grid place-items-center hover:border-white/40 transition-colors text-white cursor-pointer"
+                className="w-11 h-11 rounded-full border border-white/10 grid place-items-center hover:border-[#FBBF24] hover:text-[#FBBF24] transition-all text-white cursor-pointer"
                 aria-label="Next testimonial"
               >
                 <ChevronRight size={18} />
               </button>
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         <div className="mt-6 flex gap-2 justify-center">
           {testimonials.map((_, k) => (
@@ -109,7 +126,7 @@ const Testimonials = () => {
               data-testid={`testimonial-dot-${k}`}
               aria-label={`Testimonial ${k + 1}`}
               className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                k === i ? "w-8 bg-[#FBBF24]" : "w-1.5 bg-white/20"
+                k === i ? "w-8 bg-[#FBBF24]" : "w-1.5 bg-white/20 hover:bg-white/40"
               }`}
             />
           ))}

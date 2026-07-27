@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import gsap from "gsap";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import Footer from "@/components/weaz/Footer";
 import LeadModal from "@/components/weaz/LeadModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
+import { GsapReveal } from "@/components/ui/GsapReveal";
 import { Phone, Mail, Globe, MessageSquare, Send, Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -96,7 +98,8 @@ export default function ContactPage() {
         />
 
         <section className="py-20 md:py-28 relative">
-          <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-start">
+          <div className="max-w-7xl mx-auto px-6">
+            <GsapReveal className="grid lg:grid-cols-12 gap-12 items-start" stagger={0.1}>
             {/* Contact Details Column */}
             <div className="lg:col-span-5 space-y-6">
               <div className="surface-card p-8 border-white/10 space-y-6">
@@ -352,6 +355,7 @@ export default function ContactPage() {
                 </div>
               </div>
             </div>
+            </GsapReveal>
           </div>
         </section>
 

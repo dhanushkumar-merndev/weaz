@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import gsap from "gsap";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
 import LeadModal from "@/components/weaz/LeadModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
+import { GsapReveal } from "@/components/ui/GsapReveal";
 import {
   Target,
   Eye,
@@ -182,7 +184,7 @@ export default function AboutPage() {
         {/* Mission & Vision */}
         <section id="mission-vision" className="relative py-20 md:py-28">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="grid md:grid-cols-2 gap-8">
+            <GsapReveal className="grid md:grid-cols-2 gap-8" stagger={0.15}>
               <div data-testid="mission-card" className="surface-card p-8 md:p-12 border-white/10">
                 <div className="w-14 h-14 rounded-2xl bg-[#9B59D0]/15 border border-[#9B59D0]/30 grid place-items-center mb-6">
                   <Target size={26} className="text-[#9B59D0]" />
@@ -212,13 +214,14 @@ export default function AboutPage() {
                   We aim to develop leaders who can use technology confidently, build sustainable businesses, manage teams, make data-informed decisions, and create AI-powered products and services.
                 </p>
               </div>
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Company Description & Overview */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
-          <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center">
+          <div className="max-w-7xl mx-auto px-6">
+            <GsapReveal className="grid lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7">
               <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-4">
                 Company Description
@@ -272,22 +275,25 @@ export default function AboutPage() {
                 </div>
               </div>
             </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Target Audience */}
         <section className="py-20 md:py-28 relative">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
-                Who We Serve
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
+                  Who We Serve
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  Four Distinct Learner Groups
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                Four Distinct Learner Groups
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GsapReveal className="grid md:grid-cols-2 lg:grid-cols-4 gap-6" stagger={0.1}>
               {targetAudiences.map((ta) => {
                 const Icon = ta.icon;
                 return (
@@ -324,23 +330,25 @@ export default function AboutPage() {
                   </div>
                 );
               })}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Training Methodology */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
-                Learning Model
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
+                  Learning Model
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  WEAZ TECH Training Methodology
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                WEAZ TECH Training Methodology
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GsapReveal className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6" stagger={0.08}>
               {methodologies.map((m, idx) => (
                 <div key={m.name} className="surface-card p-6 border-white/10">
                   <div className="text-xs font-mono text-[#FBBF24] mb-3">0{idx + 1}</div>
@@ -348,23 +356,25 @@ export default function AboutPage() {
                   <p className="text-xs text-white/60 leading-relaxed">{m.desc}</p>
                 </div>
               ))}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Comprehensive Skills Matrix */}
         <section className="py-20 md:py-28 relative">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
-                Capabilities Matrix
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
+                  Capabilities Matrix
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  Skills Covered Across Programs
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                Skills Covered Across Programs
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <GsapReveal className="grid md:grid-cols-2 gap-8" stagger={0.1}>
               {skillsGrid.map((sg) => (
                 <div key={sg.category} className="surface-card p-8 border-white/10">
                   <div
@@ -383,7 +393,7 @@ export default function AboutPage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 

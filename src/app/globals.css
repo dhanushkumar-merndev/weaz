@@ -183,3 +183,73 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3a2a4d;
 }
+
+/* Highlighted Button Shine Effect */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.btn-shine::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 80%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0.65) 50%,
+    rgba(255, 255, 255, 0.15) 70%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  animation: shine-sweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.btn-shine:hover::before {
+  animation: shine-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes shine-sweep {
+  0% {
+    left: -120%;
+  }
+  20% {
+    left: 180%;
+  }
+  100% {
+    left: 180%;
+  }
+}
+
+/* Mobile-optimized performance helpers */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+@media (max-width: 768px) {
+  .blob {
+    filter: blur(80px);
+  }
+  .btn-shine::before {
+    animation-duration: 5s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

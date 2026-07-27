@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import gsap from "gsap";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import CareerOutcomes from "@/components/weaz/CareerOutcomes";
@@ -9,6 +10,7 @@ import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
 import LeadModal from "@/components/weaz/LeadModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
+import { GsapReveal } from "@/components/ui/GsapReveal";
 import { TrendingUp, Briefcase, Award, Rocket, CheckCircle2, LineChart, ShieldCheck } from "lucide-react";
 
 const primaryPathways = [
@@ -67,16 +69,18 @@ export default function OutcomesPage() {
         {/* Primary Pathways Detail */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
-                Featured Pathways
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
+                  Featured Pathways
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  Core Career &amp; Founder Tracks
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                Core Career &amp; Founder Tracks
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GsapReveal className="grid md:grid-cols-2 lg:grid-cols-4 gap-6" stagger={0.1}>
               {primaryPathways.map((path) => {
                 const Icon = path.icon;
                 return (
@@ -104,48 +108,51 @@ export default function OutcomesPage() {
                   </div>
                 );
               })}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Extended Opportunities & Roles */}
         <section className="py-20 md:py-28 relative">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
-                Job Roles &amp; Opportunities
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
+                  Job Roles &amp; Opportunities
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  Related Career Roles
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                Related Career Roles
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <GsapReveal className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4" stagger={0.06}>
               {extendedRoles.map((role) => (
                 <div key={role} className="p-4 rounded-xl border border-white/10 bg-white/[0.02] flex items-center gap-3">
                   <CheckCircle2 size={16} className="text-[#FBBF24] shrink-0" />
                   <span className="text-xs font-semibold text-white">{role}</span>
                 </div>
               ))}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Success Highlights & Verification Note */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="surface-card p-8 md:p-14 border-white/10">
-              <div className="max-w-3xl mb-8">
-                <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
-                  Key Highlights
+            <GsapReveal>
+              <div className="surface-card p-8 md:p-14 border-white/10">
+                <div className="max-w-3xl mb-8">
+                  <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
+                    Key Highlights
+                  </div>
+                  <h3 className="font-display text-3xl font-bold text-white">
+                    Why WEAZ TECH Alumni Succeed
+                  </h3>
                 </div>
-                <h3 className="font-display text-3xl font-bold text-white">
-                  Why WEAZ TECH Alumni Succeed
-                </h3>
-              </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {successHighlights.map((h) => (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {successHighlights.map((h) => (
                   <div key={h} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex items-start gap-3 text-sm text-white/80">
                     <ShieldCheck size={18} className="text-[#9B59D0] mt-0.5 shrink-0" />
                     <span>{h}</span>
@@ -153,6 +160,7 @@ export default function OutcomesPage() {
                 ))}
               </div>
             </div>
+            </GsapReveal>
           </div>
         </section>
 

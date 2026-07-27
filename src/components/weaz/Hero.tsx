@@ -1,7 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import gsap from "gsap";
+import { ShineButton } from "@/components/ui/ShineButton";
+import { GsapCounter } from "@/components/ui/GsapCounter";
 
 const HERO_IMG = "/images/speaker-auditorium.jpg";
 
@@ -10,14 +14,35 @@ interface HeroProps {
 }
 
 const Hero = ({ onEnroll }: HeroProps) => {
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (!headlineRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ".hero-gsap-item",
+        { opacity: 0, y: 25 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          stagger: 0.12,
+          ease: "power3.out",
+        }
+      );
+    }, headlineRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <section id="top" data-testid="hero-section" className="relative pt-32 pb-24 md:pt-40 md:pb-32">
-      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center relative">
+    <section id="top" data-testid="hero-section" className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-start relative" ref={headlineRef}>
         {/* Left */}
         <div className="lg:col-span-7 relative z-10">
           <div
             data-testid="hero-eyebrow"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.2em] text-white/70 mb-8"
+            className="hero-gsap-item inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.2em] text-white/70 mb-8"
           >
             <Sparkles size={14} className="text-[#FBBF24]" />
             Digital Entrepreneurship &amp; AI
@@ -25,7 +50,7 @@ const Hero = ({ onEnroll }: HeroProps) => {
 
           <h1
             data-testid="hero-headline"
-            className="font-display text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] text-white"
+            className="hero-gsap-item font-display text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] text-white"
           >
             WEAZ TECH
             <span className="block text-white/60 font-semibold text-3xl sm:text-4xl lg:text-5xl mt-4">
@@ -33,40 +58,48 @@ const Hero = ({ onEnroll }: HeroProps) => {
             </span>
           </h1>
 
-          <p data-testid="hero-subheadline" className="mt-8 text-xl md:text-2xl text-white/70 max-w-2xl">
-            Learn. Build. Grow. <span className="text-[#FBBF24]">Lead with AI.</span>
+          <p data-testid="hero-subheadline" className="hero-gsap-item mt-8 text-xl md:text-2xl text-white/70 max-w-2xl">
+            Learn. Build. Grow. <span className="text-[#FBBF24] font-bold">Lead with AI.</span>
           </p>
 
-          <p className="mt-6 text-white/50 max-w-xl leading-relaxed">
+          <p className="hero-gsap-item mt-6 text-white/50 max-w-xl leading-relaxed text-sm sm:text-base">
             Real skills, real mentors, real outcomes. A community of tech-savvy founders and
             operators shaping India&apos;s AI-first economy.
           </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <button
+          <div className="hero-gsap-item mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <ShineButton
               data-testid="hero-enroll-btn"
               onClick={onEnroll}
-              className="pill-gold px-8 py-4 text-base inline-flex items-center gap-2 cursor-pointer"
+              variant="gold"
+              className="px-8 py-4 text-base"
             >
               Enroll Now <ArrowRight size={18} />
-            </button>
-            <a
+            </ShineButton>
+            
+            <motion.a
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               href="#programs"
               data-testid="hero-explore-btn"
-              className="pill-ghost px-8 py-4 text-base inline-flex items-center justify-center"
+              className="pill-ghost px-8 py-4 text-base inline-flex items-center justify-center font-medium"
             >
               Explore Programs
-            </a>
+            </motion.a>
           </div>
 
-          <div className="mt-12 flex items-center gap-8 text-xs uppercase tracking-[0.2em] text-white/40">
+          <div className="hero-gsap-item mt-12 flex items-center gap-6 sm:gap-8 text-xs uppercase tracking-[0.2em] text-white/40">
             <div>
-              <div className="text-2xl font-display text-white font-bold">90%+</div>
+              <div className="text-2xl font-display text-white font-bold">
+                <GsapCounter end={90} suffix="%+" />
+              </div>
               <div className="mt-1">Placement Rate</div>
             </div>
             <div className="h-8 w-px bg-white/10" />
             <div>
-              <div className="text-2xl font-display text-white font-bold">3</div>
+              <div className="text-2xl font-display text-white font-bold">
+                <GsapCounter end={3} duration={1.2} />
+              </div>
               <div className="mt-1">Signature Programs</div>
             </div>
             <div className="h-8 w-px bg-white/10 hidden sm:block" />
@@ -79,7 +112,12 @@ const Hero = ({ onEnroll }: HeroProps) => {
 
         {/* Right: Image */}
         <div className="lg:col-span-5 relative">
-          <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden border border-white/10 floaty">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative aspect-[4/5] rounded-[2rem] overflow-hidden border border-white/10 floaty gpu-accelerated"
+          >
             <img
               src={HERO_IMG}
               alt="Confident entrepreneur speaking"
@@ -90,21 +128,26 @@ const Hero = ({ onEnroll }: HeroProps) => {
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(155,89,208,0.35),transparent_60%)]" />
 
             <div className="absolute bottom-6 left-6 right-6 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-[#FBBF24] animate-pulse" />
-              <span className="text-xs uppercase tracking-[0.25em] text-white/80">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#FBBF24] animate-pulse" />
+              <span className="text-xs uppercase tracking-[0.25em] text-white/90 font-semibold">
                 Cohort Now Enrolling
               </span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Decorative small card */}
-          <div className="absolute -bottom-8 -left-6 hidden md:block surface-card p-4 pr-6 w-64">
-            <div className="text-[10px] uppercase tracking-[0.25em] text-white/50 mb-1">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="absolute -bottom-8 -left-6 hidden md:block surface-card p-4 pr-6 w-64 shadow-2xl border-white/15"
+          >
+            <div className="text-[10px] uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-1">
               Next Cohort
             </div>
             <div className="font-display text-lg font-bold text-white">Limited Seats</div>
             <div className="text-xs text-white/60 mt-1">Priority interviews open now.</div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

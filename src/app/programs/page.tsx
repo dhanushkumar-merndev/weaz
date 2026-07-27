@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import gsap from "gsap";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import ProgramsOrbit from "@/components/weaz/ProgramsOrbit";
@@ -8,6 +9,7 @@ import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
 import LeadModal from "@/components/weaz/LeadModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
+import { GsapReveal } from "@/components/ui/GsapReveal";
 import {
   CheckCircle2,
   Clock,
@@ -290,7 +292,7 @@ export default function ProgramsPage() {
               </h2>
             </div>
 
-            <div className="space-y-24">
+            <GsapReveal className="space-y-24" stagger={0.15}>
               {programsData.map((prog, idx) => {
                 const flipped = idx % 2 === 1;
                 return (
@@ -413,23 +415,25 @@ export default function ProgramsPage() {
                   </div>
                 );
               })}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* Side-by-Side Matrix Table */}
         <section className="py-20 md:py-28 relative border-t border-white/5 bg-[#0A0710]">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
-                Quick Comparison
+            <GsapReveal>
+              <div className="max-w-3xl mb-14">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#9B59D0] font-bold mb-3">
+                  Quick Comparison
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  Program Matrix Overview
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                Program Matrix Overview
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="surface-card overflow-x-auto border-white/10">
+            <GsapReveal className="surface-card overflow-x-auto border-white/10">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/[0.02]">
@@ -452,23 +456,25 @@ export default function ProgramsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </GsapReveal>
           </div>
         </section>
 
         {/* 4-Step Enrollment Process */}
         <section className="py-20 md:py-28 relative">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="max-w-3xl mb-14 text-center mx-auto">
-              <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
-                Enrollment Journey
+            <GsapReveal>
+              <div className="max-w-3xl mb-14 text-center mx-auto">
+                <div className="text-xs uppercase tracking-[0.25em] text-[#FBBF24] font-bold mb-3">
+                  Enrollment Journey
+                </div>
+                <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                  4 Steps to Start Your Journey
+                </h2>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-                4 Steps to Start Your Journey
-              </h2>
-            </div>
+            </GsapReveal>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GsapReveal className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6" stagger={0.1}>
               {steps.map((s) => (
                 <div key={s.n} className="surface-card p-6 border-white/10 relative">
                   <div className="flex items-center gap-3 mb-4">
@@ -483,7 +489,7 @@ export default function ProgramsPage() {
                   <p className="text-xs text-white/60 leading-relaxed">{s.desc}</p>
                 </div>
               ))}
-            </div>
+            </GsapReveal>
           </div>
         </section>
 

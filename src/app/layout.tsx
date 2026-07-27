@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" data-scroll-behavior="smooth">
       <body className="bg-[#0F0B14] text-white antialiased">
         {children}
         <Toaster position="top-center" theme="dark" richColors />
