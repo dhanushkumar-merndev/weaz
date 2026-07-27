@@ -7,7 +7,7 @@ import PageHeader from "@/components/weaz/PageHeader";
 import ComparisonTable from "@/components/weaz/ComparisonTable";
 import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
-import LeadModal from "@/components/weaz/LeadModal";
+import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
 import { CreditCard, HelpCircle, CheckCircle2, ShieldCheck, ChevronDown, Award, Zap, Layers } from "lucide-react";
@@ -226,7 +226,7 @@ export default function PricingPage() {
         <Footer />
       </main>
 
-      <LeadModal
+      <EnrollmentModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         defaultProgram={defaultProgram}

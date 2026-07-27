@@ -5,7 +5,7 @@ import gsap from "gsap";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import Footer from "@/components/weaz/Footer";
-import LeadModal from "@/components/weaz/LeadModal";
+import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
 import { Phone, Mail, Globe, MessageSquare, Send, Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
@@ -362,7 +362,7 @@ export default function ContactPage() {
         <Footer />
       </main>
 
-      <LeadModal
+      <EnrollmentModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         defaultProgram={defaultProgram}

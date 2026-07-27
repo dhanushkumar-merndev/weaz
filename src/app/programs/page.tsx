@@ -7,7 +7,7 @@ import PageHeader from "@/components/weaz/PageHeader";
 import ProgramsOrbit from "@/components/weaz/ProgramsOrbit";
 import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
-import LeadModal from "@/components/weaz/LeadModal";
+import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
 import {
@@ -497,7 +497,7 @@ export default function ProgramsPage() {
         <Footer />
       </main>
 
-      <LeadModal
+      <EnrollmentModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         defaultProgram={defaultProgram}

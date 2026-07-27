@@ -8,7 +8,7 @@ import CareerOutcomes from "@/components/weaz/CareerOutcomes";
 import Testimonials from "@/components/weaz/Testimonials";
 import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
-import LeadModal from "@/components/weaz/LeadModal";
+import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
 import { TrendingUp, Briefcase, Award, Rocket, CheckCircle2, LineChart, ShieldCheck } from "lucide-react";
@@ -171,7 +171,7 @@ export default function OutcomesPage() {
         <Footer />
       </main>
 
-      <LeadModal
+      <EnrollmentModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         defaultProgram={defaultProgram}
