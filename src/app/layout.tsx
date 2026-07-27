@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import SmoothScroll from "@/components/SmoothScroll";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { QueryProvider } from "@/providers/QueryProvider";
 
 export const metadata: Metadata = {
   title: "WEAZ TECH | Digital Entrepreneurship & AI",
@@ -31,9 +32,11 @@ export default function RootLayout({
     <html lang="en" className="dark" data-scroll-behavior="smooth">
       <body className="bg-[#0F0B14] text-white antialiased" suppressHydrationWarning>
         <SmoothScroll>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </QueryProvider>
         </SmoothScroll>
         <Toaster position="top-center" theme="dark" richColors />
       </body>

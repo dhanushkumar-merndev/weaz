@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { useAuth } from "@/providers/AuthProvider";
 import Navbar from "@/components/weaz/Navbar";
 import Hero from "@/components/weaz/Hero";
 import About from "@/components/weaz/About";
@@ -12,12 +11,10 @@ import CareerOutcomes from "@/components/weaz/CareerOutcomes";
 import Testimonials from "@/components/weaz/Testimonials";
 import FinalCTA from "@/components/weaz/FinalCTA";
 import Footer from "@/components/weaz/Footer";
-import LeadModal from "@/components/weaz/LeadModal";
 import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 
 export default function Home() {
-  const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [defaultProgram, setDefaultProgram] = useState("");
 
@@ -63,19 +60,11 @@ export default function Home() {
         <Footer />
       </main>
 
-      {user ? (
-        <EnrollmentModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          defaultProgram={defaultProgram}
-        />
-      ) : (
-        <LeadModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          defaultProgram={defaultProgram}
-        />
-      )}
+      <EnrollmentModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        defaultProgram={defaultProgram}
+      />
       <WhatsAppFab />
     </div>
   );

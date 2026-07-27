@@ -118,6 +118,17 @@ export function EnrollmentModal({
       return;
     }
 
+    const phoneDigits = form.phone.replace(/\D/g, "").replace(/^91/, "");
+    if (phoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits (e.g. 9422799299)");
+      return;
+    }
+
+    if (!user?.email) {
+      toast.error("You must be signed in with a valid email");
+      return;
+    }
+
     setSubmitting(true);
     setStep("paying");
 
@@ -187,6 +198,7 @@ export function EnrollmentModal({
             setStep("success");
             setSubmitting(false);
             toast.success("Payment successful! Welcome to WEAZ TECH.");
+            window.dispatchEvent(new CustomEvent("enrollment-updated"));
           } else {
             toast.error("Payment verification failed. Please contact support.");
             setSubmitting(false);

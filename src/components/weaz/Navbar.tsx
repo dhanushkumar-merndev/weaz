@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, LogOut, User, CreditCard, Calendar } from "lucide-react";
+import { Menu, X, LogOut, User, CreditCard, Calendar, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShineButton } from "@/components/ui/ShineButton";
 import { useAuth } from "@/providers/AuthProvider";
@@ -29,11 +29,12 @@ interface EnrollmentInfo {
 
 const Navbar = ({ onEnroll }: NavbarProps) => {
   const pathname = usePathname();
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [enrollment, setEnrollment] = useState<EnrollmentInfo | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,22 +53,33 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const fetchProfile = useCallback(() => {
+    if (!user) { setEnrollment(null); return; }
+    fetch("/api/user/profile").then(r => r.json()).then(data => {
+      if (data.enrollment) setEnrollment(data.enrollment);
+    }).catch(() => {});
+  }, [user]);
+
   useEffect(() => {
     if (user) {
-      fetch("/api/user/profile").then(r => r.json()).then(data => {
-        if (data.enrollment) setEnrollment(data.enrollment);
+      fetchProfile();
+      fetch("/api/admin/check").then(r => r.json()).then(data => {
+        if (data.admin) setIsAdmin(true);
       }).catch(() => {});
     } else {
       setEnrollment(null);
+      setIsAdmin(false);
     }
-  }, [user]);
+  }, [user, fetchProfile]);
 
-  const handleEnrollClick = async () => {
-    if (!user) {
-      await signInWithGoogle();
-    } else {
-      onEnroll();
-    }
+  useEffect(() => {
+    const handler = () => fetchProfile();
+    window.addEventListener("enrollment-updated", handler);
+    return () => window.removeEventListener("enrollment-updated", handler);
+  }, [fetchProfile]);
+
+  const handleEnrollClick = () => {
+    onEnroll();
   };
 
   return (
@@ -120,7 +132,16 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          {user ? (
+          <ShineButton
+            data-testid="nav-enroll-btn"
+            onClick={handleEnrollClick}
+            variant="gold"
+            className="px-5 py-2 text-xs md:text-sm"
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Enroll Now"}
+          </ShineButton>
+          {user && (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen((v) => !v)}
@@ -148,23 +169,37 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-64 surface-card border-white/10 shadow-2xl z-50"
+                    className="absolute -right-2 top-full mt-1.5 w-64 bg-[#15111D]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/40 z-50 overflow-hidden"
                   >
-                    <div className="p-4 border-b border-white/5">
-                      <div className="font-display font-bold text-white text-sm truncate">
-                        {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
+                    <div className="p-4 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-[#9B59D0]/30">
+                          {user.user_metadata?.avatar_url ? (
+                            <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-[#9B59D0] grid place-items-center">
+                              <User size={14} className="text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-display font-bold text-white text-sm truncate">
+                            {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
+                          </div>
+                          <div className="text-[11px] text-white/40 truncate">{user.email}</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-white/50 truncate mt-0.5">{user.email}</div>
                     </div>
 
                     {enrollment ? (
-                      <div className="px-4 py-3 border-b border-white/5">
-                        <div className="flex items-center gap-2 text-xs text-white/70 mb-1">
+                      <div className="px-4 py-3 border-b border-white/[0.06]">
+                        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Enrollment</div>
+                        <div className="flex items-center gap-2 text-xs text-white/80 mb-1">
                           <CreditCard size={12} className="text-[#FBBF24]" />
-                          <span>{enrollment.programs?.name || "Enrolled"}</span>
+                          <span className="truncate">{enrollment.programs?.name || "Enrolled"}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-white/50">
-                          <Calendar size={12} />
+                        <div className="flex items-center gap-2 text-xs text-white/40">
+                          <Calendar size={11} />
                           <span>
                             {enrollment.status === "paid"
                               ? `Paid ${enrollment.paid_at ? new Date(enrollment.paid_at).toLocaleDateString() : ""}`
@@ -173,17 +208,28 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="px-4 py-3 border-b border-white/5">
-                        <div className="text-xs text-white/50">No active enrollment</div>
+                      <div className="px-4 py-4 border-b border-white/[0.06]">
+                        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Enrollment</div>
+                        <div className="text-xs text-white/40">No active enrollment</div>
                       </div>
                     )}
 
-                    <div className="p-2">
+                    <div className="p-1.5 space-y-0.5">
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.06] rounded-xl transition-all cursor-pointer"
+                        >
+                          <Shield size={15} />
+                          Admin Panel
+                        </Link>
+                      )}
                       <button
                         onClick={() => { signOut(); setDropdownOpen(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.06] rounded-xl transition-all cursor-pointer"
                       >
-                        <LogOut size={14} />
+                        <LogOut size={15} />
                         Sign Out
                       </button>
                     </div>
@@ -191,16 +237,6 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                 )}
               </AnimatePresence>
             </div>
-          ) : (
-            <ShineButton
-              data-testid="nav-enroll-btn"
-              onClick={handleEnrollClick}
-              variant="gold"
-              className="px-5 py-2 text-xs md:text-sm"
-              disabled={loading}
-            >
-              {loading ? "Loading..." : "Enroll Now"}
-            </ShineButton>
           )}
         </div>
 
