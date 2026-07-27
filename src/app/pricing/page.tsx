@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import gsap from "gsap";
+import { useState, useCallback} from "react";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import ComparisonTable from "@/components/weaz/ComparisonTable";
@@ -10,7 +9,7 @@ import Footer from "@/components/weaz/Footer";
 import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
-import { CreditCard, HelpCircle, CheckCircle2, ShieldCheck, ChevronDown, Award, Zap, Layers } from "lucide-react";
+import { CreditCard,CheckCircle2,ChevronDown} from "lucide-react";
 
 const reasonsToChoose = [
   {
@@ -164,7 +163,7 @@ export default function PricingPage() {
                     Inquire About EMI / Scholarship
                   </button>
                   <div className="text-xs text-white/40 mt-3">
-                    Fast approval process via WhatsApp (+91 94227 99299)
+                    Fast approval process via WhatsApp (+91 97229 33197)
                   </div>
                 </div>
               </div>

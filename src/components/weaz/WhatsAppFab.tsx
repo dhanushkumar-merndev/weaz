@@ -3,7 +3,7 @@
 import React from "react";
 import { MessageCircle } from "lucide-react";
 
-const WHATSAPP_NUMBER = "919422799299"; // +91 94227 99299
+const WHATSAPP_NUMBER = "919722933197"; // +91 97229 33197
 const WA_TEXT = encodeURIComponent(
   "Hi WEAZ Tech! I'd like to know more about your programs."
 );

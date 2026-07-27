@@ -27,15 +27,34 @@ interface EnrollmentInfo {
   programs: { name: string; tagline: string; duration: string } | null;
 }
 
+interface ProfileResult {
+  userId: string;
+  enrollment: EnrollmentInfo | null;
+}
+
+interface AdminResult {
+  userId: string;
+  isAdmin: boolean;
+}
+
 const Navbar = ({ onEnroll }: NavbarProps) => {
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [enrollment, setEnrollment] = useState<EnrollmentInfo | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
+  const [adminResult, setAdminResult] = useState<AdminResult | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const enrollment =
+    user && profileResult?.userId === user.id
+      ? profileResult.enrollment
+      : null;
+  const isAdmin = Boolean(
+    user &&
+      adminResult?.userId === user.id &&
+      adminResult.isAdmin
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -53,23 +72,65 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchProfile = useCallback(() => {
-    if (!user) { setEnrollment(null); return; }
-    fetch("/api/user/profile").then(r => r.json()).then(data => {
-      if (data.enrollment) setEnrollment(data.enrollment);
-    }).catch(() => {});
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch("/api/user/profile");
+      if (!response.ok) return;
+      const data = await response.json();
+      setProfileResult({
+        userId: user.id,
+        enrollment: data.enrollment ?? null,
+      });
+    } catch {
+      // Keep the navigation usable if profile loading fails.
+    }
   }, [user]);
 
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetch("/api/admin/check").then(r => r.json()).then(data => {
-        if (data.admin) setIsAdmin(true);
-      }).catch(() => {});
-    } else {
-      setEnrollment(null);
-      setIsAdmin(false);
+    if (!user) return;
+
+    let cancelled = false;
+    const userId = user.id;
+
+    fetch("/api/user/profile")
+      .then((response) => {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then((data) => {
+        if (!cancelled && data) {
+          setProfileResult({
+            userId,
+            enrollment: data.enrollment ?? null,
+          });
+        }
+      })
+      .catch(() => {
+        // Keep the navigation usable if profile loading fails.
+      });
+
+    async function fetchAdminStatus() {
+      try {
+        const response = await fetch("/api/admin/check");
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) {
+          setAdminResult({
+            userId,
+            isAdmin: data.admin === true,
+          });
+        }
+      } catch {
+        // A failed admin check should not affect the public navigation.
+      }
     }
+
+    void fetchAdminStatus();
+    return () => {
+      cancelled = true;
+    };
   }, [user, fetchProfile]);
 
   useEffect(() => {
@@ -136,7 +197,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
             data-testid="nav-enroll-btn"
             onClick={handleEnrollClick}
             variant="gold"
-            className="px-5 py-2 text-xs md:text-sm"
+            className="!px-4 !py-2 !text-xs"
             disabled={loading}
           >
             {loading ? "Loading..." : "Enroll Now"}
@@ -316,7 +377,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                     handleEnrollClick();
                   }}
                   variant="gold"
-                  className="w-full text-center py-3"
+                  className="w-full text-center !py-2.5 !text-sm"
                   disabled={loading}
                 >
                   {loading ? "Loading..." : user ? "Enroll Now" : "Sign In to Enroll"}

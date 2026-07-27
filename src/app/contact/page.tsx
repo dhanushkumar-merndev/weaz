@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import gsap from "gsap";
+import React, { useState, useCallback, } from "react";
 import Navbar from "@/components/weaz/Navbar";
 import PageHeader from "@/components/weaz/PageHeader";
 import Footer from "@/components/weaz/Footer";
 import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
-import { Phone, Mail, Globe, MessageSquare, Send, Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Phone, Mail, Globe, MessageSquare, Send, Clock,} from "lucide-react";
 import { toast } from "sonner";
 
-const WHATSAPP_NUMBER = "919422799299";
+const WHATSAPP_NUMBER = "919722933197";
 
 const currentStatusOptions = [
   "Student / Fresh Graduate",
@@ -93,7 +92,7 @@ export default function ContactPage() {
         <PageHeader
           badge="Admissions & Contact"
           title="Connect With WEAZ TECH"
-          subtitle="Call or WhatsApp +91 94227 99299 for admissions & program guidance."
+          subtitle="Call or WhatsApp +91 97229 33197 for admissions & program guidance."
           description="Have questions about program curricula, fees, EMI plans, or batch timings? Fill in the form below or message our admissions desk directly on WhatsApp."
         />
 
@@ -109,7 +108,7 @@ export default function ContactPage() {
 
                 <div className="space-y-4">
                   <a
-                    href="tel:+919422799299"
+                    href="tel:+919722933197"
                     className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:border-[#9B59D0]/40 transition-colors"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#9B59D0]/15 border border-[#9B59D0]/30 grid place-items-center shrink-0">
@@ -120,7 +119,7 @@ export default function ContactPage() {
                         Phone &amp; WhatsApp
                       </div>
                       <div className="text-base font-semibold text-white mt-0.5">
-                        +91 94227 99299
+                        +91 97229 33197
                       </div>
                     </div>
                   </a>
@@ -237,7 +236,7 @@ export default function ContactPage() {
                     Submit Inquiry via WhatsApp
                   </h3>
                   <p className="text-white/60 text-sm mt-2">
-                    Submit your details below to automatically open WhatsApp with your pre-formatted application text to +91 94227 99299.
+                    Submit your details below to automatically open WhatsApp with your pre-formatted application text to +91 97229 33197.
                   </p>
 
                   <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -264,7 +263,7 @@ export default function ContactPage() {
                           type="tel"
                           value={form.phone}
                           onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                          placeholder="+91 94227 99299"
+                          placeholder="+91 97229 33197"
                           className="w-full h-11 px-4 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#9B59D0]"
                           required
                         />

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, MessageSquare } from "lucide-react";
 
-const WHATSAPP_NUMBER = "919422799299";
+const WHATSAPP_NUMBER = "919722933197";
 
 const PROGRAMS = [
   "Beginner Program",
@@ -47,18 +47,25 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (open) {
+  const matchedDefaultProgram = PROGRAMS.find(
+    (program) =>
+      defaultProgram &&
+      program
+        .toLowerCase()
+        .includes(defaultProgram.toLowerCase().split(" ")[0])
+  );
+  const selectedProgram =
+    form.program || matchedDefaultProgram || defaultProgram || "";
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
       setSuccess(false);
       setError("");
-      const match = PROGRAMS.find(
-        (p) =>
-          defaultProgram &&
-          p.toLowerCase().includes(defaultProgram.toLowerCase().split(" ")[0])
-      );
-      setForm((f) => ({ ...f, program: match || defaultProgram || "" }));
+      setLoading(false);
+      setForm((current) => ({ ...current, program: "" }));
     }
-  }, [open, defaultProgram]);
+    onOpenChange(nextOpen);
+  };
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -69,7 +76,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
       return "Please enter a valid phone number.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
       return "Please enter a valid email address.";
-    if (!form.program) return "Please choose a program.";
+    if (!selectedProgram) return "Please choose a program.";
     return "";
   };
 
@@ -91,7 +98,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
         `👤 *Name:* ${form.name.trim()}`,
         `📞 *Phone:* ${form.phone.trim()}`,
         `✉️ *Email:* ${form.email.trim()}`,
-        `🎯 *Program:* ${form.program}`,
+        `🎯 *Program:* ${selectedProgram}`,
       ];
 
       if (form.message.trim()) {
@@ -108,7 +115,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
       setSuccess(true);
       toast.success("Application ready! Opening WhatsApp to send details.");
       setForm({ name: "", phone: "", email: "", program: "", message: "" });
-    } catch (err: unknown) {
+    } catch {
       const errorMsg = "Something went wrong. Please try again.";
       setError(errorMsg);
       toast.error(errorMsg);
@@ -118,7 +125,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="lead-capture-modal"
         className="max-w-lg bg-[#1A1525] border-white/10 text-white p-0 overflow-hidden"
@@ -133,7 +140,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
               Reserve your seat
             </DialogTitle>
             <DialogDescription className="text-white/60 mt-1">
-              Fill in your details below. Submitting will direct your application to our admissions WhatsApp (+91 94227 99299).
+              Fill in your details below. Submitting will direct your application to our admissions WhatsApp (+91 97229 33197).
             </DialogDescription>
           </DialogHeader>
 
@@ -148,7 +155,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
               </p>
               <button
                 data-testid="lead-close-btn"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 className="pill-gold px-6 py-3 mt-8 text-sm cursor-pointer"
               >
                 Close
@@ -180,7 +187,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
                     data-testid="lead-input-phone"
                     value={form.phone}
                     onChange={(e) => set("phone", e.target.value)}
-                    placeholder="+91 94227 99299"
+                    placeholder="+91 97229 33197"
                     className="mt-2 bg-black/30 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#9B59D0]"
                   />
                 </div>
@@ -205,7 +212,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
                   Program of Interest
                 </Label>
                 <Select
-                  value={form.program}
+                  value={selectedProgram}
                   onValueChange={(v) => set("program", v)}
                 >
                   <SelectTrigger
@@ -260,7 +267,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
               </button>
 
               <p className="text-[11px] text-white/40 text-center">
-                Submitting will send your application directly to WEAZ Tech WhatsApp (+91 94227 99299).
+                Submitting will send your application directly to WEAZ Tech WhatsApp (+91 97229 33197).
               </p>
             </form>
           )}

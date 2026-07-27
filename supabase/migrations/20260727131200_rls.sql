@@ -15,15 +15,6 @@ CREATE POLICY "enrollments_select_own"
   ON enrollments FOR SELECT
   USING (auth.uid()::text = user_id);
 
--- Enrollments: user can insert own enrollment
-CREATE POLICY "enrollments_insert_own"
-  ON enrollments FOR INSERT
-  WITH CHECK (auth.uid()::text = user_id);
-
--- Enrollments: user can update own enrollment (for payment flow)
-CREATE POLICY "enrollments_update_own"
-  ON enrollments FOR UPDATE
-  USING (auth.uid()::text = user_id);
-
--- Enrollments: only service_role can update any enrollment (webhook)
--- (explicitly allowed via service_role key, no additional policy needed)
+-- Enrollment creation and payment-state changes are server-only operations.
+-- Server routes use the service_role; browser clients may only read their rows.
+REVOKE INSERT, UPDATE, DELETE ON TABLE enrollments FROM anon, authenticated;

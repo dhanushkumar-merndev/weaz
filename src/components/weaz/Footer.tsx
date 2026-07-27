@@ -27,7 +27,7 @@ const Footer = () => {
 
           <div className="lg:col-span-6 grid sm:grid-cols-2 gap-4">
             <a
-              href="tel:+919422799299"
+              href="tel:+919722933197"
               data-testid="footer-phone-link"
               className="p-5 rounded-2xl border border-white/10 hover:border-[#9B59D0]/50 transition-colors flex items-start gap-3"
             >
@@ -38,7 +38,7 @@ const Footer = () => {
                 <div className="text-xs uppercase tracking-[0.25em] text-white/50 font-bold">
                   Phone
                 </div>
-                <div className="mt-1 font-semibold text-white">+91 94227 99299</div>
+                <div className="mt-1 font-semibold text-white">+91 97229 33197</div>
               </div>
             </a>
 

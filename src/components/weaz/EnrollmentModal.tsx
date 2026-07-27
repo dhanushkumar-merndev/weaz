@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,12 +38,69 @@ interface EnrollmentModalProps {
   defaultProgram?: string;
 }
 
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error?: {
+    description?: string;
+  };
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: { color: string };
+  modal: { ondismiss: () => void };
+  handler: (response: RazorpaySuccessResponse) => Promise<void>;
+}
+
+interface RazorpayCheckout {
+  open: () => void;
+  on: (
+    event: "payment.failed",
+    handler: (response: RazorpayFailureResponse) => void
+  ) => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayCheckout;
+  }
+}
+
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if ((window as any).Razorpay) {
+    if (window.Razorpay) {
       resolve(true);
       return;
     }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    );
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(true), {
+        once: true,
+      });
+      existingScript.addEventListener("error", () => resolve(false), {
+        once: true,
+      });
+      return;
+    }
+
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve(true);
@@ -66,19 +123,19 @@ export function EnrollmentModal({
   defaultProgram: rawDefault,
 }: EnrollmentModalProps) {
   const { user, signInWithGoogle } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loadingPrograms, setLoadingPrograms] = useState(true);
-  const [step, setStep] = useState<"form" | "paying" | "success">("form");
+  const [step, setStep] = useState<
+    "form" | "paying" | "processing" | "success"
+  >("form");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
 
   useEffect(() => {
     if (!open) return;
-    setStep("form");
-    setSubmitting(false);
 
     supabase.from("programs").select("*").order("id").then(({ data }) => {
       if (data) setPrograms(data);
@@ -91,16 +148,16 @@ export function EnrollmentModal({
         );
         if (match) setSelectedProgramId(String(match.id));
       }
-    });
 
-    if (user) {
-      const name =
-        user.user_metadata?.full_name ||
-        user.email?.split("@")[0] ||
-        "";
-      setForm((f) => ({ ...f, name }));
-    }
-  }, [open, rawDefault, user]);
+      if (user) {
+        const name =
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "";
+        setForm((f) => ({ ...f, name }));
+      }
+    });
+  }, [open, rawDefault, supabase, user]);
 
   useEffect(() => {
     if (open) {
@@ -112,6 +169,14 @@ export function EnrollmentModal({
     (p) => String(p.id) === selectedProgramId
   );
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setStep("form");
+      setSubmitting(false);
+    }
+    onOpenChange(nextOpen);
+  };
+
   const handlePay = async () => {
     if (!form.name.trim() || !form.phone.trim() || !selectedProgramId) {
       toast.error("Please fill all required fields");
@@ -120,7 +185,7 @@ export function EnrollmentModal({
 
     const phoneDigits = form.phone.replace(/\D/g, "").replace(/^91/, "");
     if (phoneDigits.length !== 10) {
-      toast.error("Phone number must be exactly 10 digits (e.g. 9422799299)");
+      toast.error("Phone number must be exactly 10 digits (e.g. 9722933197)");
       return;
     }
 
@@ -133,6 +198,13 @@ export function EnrollmentModal({
     setStep("paying");
 
     try {
+      const checkoutLoaded = await loadRazorpayScript();
+      if (!checkoutLoaded || !window.Razorpay) {
+        throw new Error(
+          "Secure checkout could not load. Check your connection and try again."
+        );
+      }
+
       const leadRes = await fetch("/api/leads/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,12 +234,12 @@ export function EnrollmentModal({
         throw new Error(err.error || "Failed to create payment order");
       }
 
-      const { order_id, amount, key_id } = await orderRes.json();
+      const { order_id, amount, currency, key_id } = await orderRes.json();
 
-      const options = {
+      const options: RazorpayOptions = {
         key: key_id,
         amount,
-        currency: "INR",
+        currency,
         name: "WEAZ TECH",
         description: selectedProgram?.name || "Program Enrollment",
         order_id,
@@ -183,54 +255,94 @@ export function EnrollmentModal({
             setStep("form");
           },
         },
-        handler: async function (response: any) {
-          const verifyRes = await fetch("/api/payments/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
+        handler: async function (response: RazorpaySuccessResponse) {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+            const result = await verifyRes.json().catch(() => null);
 
-          if (verifyRes.ok) {
-            setStep("success");
-            setSubmitting(false);
-            toast.success("Payment successful! Welcome to WEAZ TECH.");
-            window.dispatchEvent(new CustomEvent("enrollment-updated"));
-          } else {
-            toast.error("Payment verification failed. Please contact support.");
-            setSubmitting(false);
+            if (verifyRes.status === 202) {
+              setStep("processing");
+              toast.info(
+                "Payment received. Your enrollment will activate after capture."
+              );
+            } else if (verifyRes.ok && result?.success === true) {
+              setStep("success");
+              toast.success("Payment successful! Welcome to WEAZ TECH.");
+              window.dispatchEvent(new CustomEvent("enrollment-updated"));
+            } else {
+              throw new Error(
+                result?.error ||
+                  "Payment verification failed. Please contact support."
+              );
+            }
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Payment verification failed. Please contact support.";
+            toast.error(message);
             setStep("form");
+          } finally {
+            setSubmitting(false);
           }
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (response) => {
+        toast.error(
+          response.error?.description ||
+            "Payment failed. No charge was confirmed."
+        );
+        setSubmitting(false);
+        setStep("form");
+      });
       rzp.open();
-    } catch (err: any) {
-      toast.error(err.message || "Something went wrong");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
       setSubmitting(false);
       setStep("form");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg bg-[#1A1525] border-white/10 text-white p-0 overflow-hidden">
         <div className="relative p-6 md:p-8">
           <div className="absolute -top-24 -right-24 w-56 h-56 rounded-full bg-[#9B59D0]/25 blur-[80px] pointer-events-none" />
 
-          {step === "success" ? (
+          {step === "success" || step === "processing" ? (
             <div className="flex flex-col items-center text-center py-8">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15 }}
               >
-                <div className="w-20 h-20 rounded-full bg-[#22c55e]/15 border border-[#22c55e]/40 grid place-items-center mb-6">
-                  <CheckCircle2 size={40} className="text-[#22c55e]" />
+                <div
+                  className={`w-20 h-20 rounded-full grid place-items-center mb-6 ${
+                    step === "success"
+                      ? "bg-[#22c55e]/15 border border-[#22c55e]/40"
+                      : "bg-[#FBBF24]/15 border border-[#FBBF24]/40"
+                  }`}
+                >
+                  {step === "success" ? (
+                    <CheckCircle2 size={40} className="text-[#22c55e]" />
+                  ) : (
+                    <Loader2
+                      size={40}
+                      className="text-[#FBBF24] animate-spin"
+                    />
+                  )}
                 </div>
               </motion.div>
 
@@ -240,14 +352,30 @@ export function EnrollmentModal({
                 transition={{ delay: 0.2 }}
               >
                 <h3 className="font-display text-2xl font-black text-white">
-                  Payment Successful!
+                  {step === "success"
+                    ? "Payment Successful!"
+                    : "Payment Processing"}
                 </h3>
                 <p className="text-white/60 mt-2 max-w-sm">
-                  Welcome to WEAZ TECH! Your enrollment in{" "}
-                  <span className="text-[#FBBF24] font-semibold">
-                    {selectedProgram?.name}
-                  </span>{" "}
-                  is confirmed. We&apos;ll reach out to you shortly with next steps.
+                  {step === "success" ? (
+                    <>
+                      Welcome to WEAZ TECH! Your enrollment in{" "}
+                      <span className="text-[#FBBF24] font-semibold">
+                        {selectedProgram?.name}
+                      </span>{" "}
+                      is confirmed. We&apos;ll reach out to you shortly with next
+                      steps.
+                    </>
+                  ) : (
+                    <>
+                      Your payment was authorized and is awaiting capture. Your{" "}
+                      <span className="text-[#FBBF24] font-semibold">
+                        {selectedProgram?.name}
+                      </span>{" "}
+                      enrollment will activate automatically after Razorpay
+                      confirms it.
+                    </>
+                  )}
                 </p>
               </motion.div>
 
@@ -320,7 +448,7 @@ export function EnrollmentModal({
                         onChange={(e) =>
                           setForm((f) => ({ ...f, phone: e.target.value }))
                         }
-                        placeholder="+91 94227 99299"
+                        placeholder="+91 97229 33197"
                         className="mt-2 bg-black/30 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#9B59D0]"
                       />
                     </div>

@@ -1,73 +1,89 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
-import gsap from "gsap";
+import { motion, type Variants } from "framer-motion";
 import { ShineButton } from "@/components/ui/ShineButton";
 import { GsapCounter } from "@/components/ui/GsapCounter";
 
 const HERO_IMG = "/images/speaker-auditorium.jpg";
+
+const heroContainerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.12,
+    },
+  },
+};
+
+const heroItemVariants: Variants = {
+  hidden: { opacity: 0, y: 25 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
 
 interface HeroProps {
   onEnroll: () => void;
 }
 
 const Hero = ({ onEnroll }: HeroProps) => {
-  const headlineRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => {
-    if (!headlineRef.current) return;
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ".hero-gsap-item",
-        { opacity: 0, y: 25 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.8,
-          stagger: 0.12,
-          ease: "power3.out",
-        }
-      );
-    }, headlineRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
     <section id="top" data-testid="hero-section" className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-start relative" ref={headlineRef}>
+      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-start relative">
         {/* Left */}
-        <div className="lg:col-span-7 relative z-10">
-          <div
+        <motion.div
+          className="lg:col-span-7 relative z-10"
+          variants={heroContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div
             data-testid="hero-eyebrow"
-            className="hero-gsap-item inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.2em] text-white/70 mb-8"
+            variants={heroItemVariants}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.2em] text-white/70 mb-8"
           >
             <Sparkles size={14} className="text-[#FBBF24]" />
             Digital Entrepreneurship &amp; AI
-          </div>
+          </motion.div>
 
-          <h1
+          <motion.h1
             data-testid="hero-headline"
-            className="hero-gsap-item font-display text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] text-white"
+            variants={heroItemVariants}
+            className="font-display text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] text-white"
           >
             WEAZ TECH
             <span className="block text-white/60 font-semibold text-3xl sm:text-4xl lg:text-5xl mt-4">
               Digital Entrepreneurship Program
             </span>
-          </h1>
+          </motion.h1>
 
-          <p data-testid="hero-subheadline" className="hero-gsap-item mt-8 text-xl md:text-2xl text-white/70 max-w-2xl">
+          <motion.p
+            data-testid="hero-subheadline"
+            variants={heroItemVariants}
+            className="mt-8 text-xl md:text-2xl text-white/70 max-w-2xl"
+          >
             Learn. Build. Grow. <span className="text-[#FBBF24] font-bold">Lead with AI.</span>
-          </p>
+          </motion.p>
 
-          <p className="hero-gsap-item mt-6 text-white/50 max-w-xl leading-relaxed text-sm sm:text-base">
+          <motion.p
+            variants={heroItemVariants}
+            className="mt-6 text-white/50 max-w-xl leading-relaxed text-sm sm:text-base"
+          >
             Real skills, real mentors, real outcomes. A community of tech-savvy founders and
             operators shaping India&apos;s AI-first economy.
-          </p>
+          </motion.p>
 
-          <div className="hero-gsap-item mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <motion.div
+            variants={heroItemVariants}
+            className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+          >
             <ShineButton
               data-testid="hero-enroll-btn"
               onClick={onEnroll}
@@ -86,9 +102,12 @@ const Hero = ({ onEnroll }: HeroProps) => {
             >
               Explore Programs
             </motion.a>
-          </div>
+          </motion.div>
 
-          <div className="hero-gsap-item mt-12 flex items-center gap-6 sm:gap-8 text-xs uppercase tracking-[0.2em] text-white/40">
+          <motion.div
+            variants={heroItemVariants}
+            className="mt-12 flex items-center gap-6 sm:gap-8 text-xs uppercase tracking-[0.2em] text-white/40"
+          >
             <div>
               <div className="text-2xl font-display text-white font-bold">
                 <GsapCounter end={90} suffix="%+" />
@@ -107,8 +126,8 @@ const Hero = ({ onEnroll }: HeroProps) => {
               <div className="text-2xl font-display text-white font-bold">1:1</div>
               <div className="mt-1">Mentorship</div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Right: Image */}
         <div className="lg:col-span-5 relative">

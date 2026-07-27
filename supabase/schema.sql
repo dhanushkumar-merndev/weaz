@@ -32,3 +32,9 @@ CREATE TABLE IF NOT EXISTS enrollments (
 CREATE INDEX IF NOT EXISTS idx_enrollments_user_id ON enrollments(user_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_status ON enrollments(status);
 CREATE INDEX IF NOT EXISTS idx_enrollments_razorpay_order_id ON enrollments(razorpay_order_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_razorpay_order_id_unique
+  ON enrollments (razorpay_order_id)
+  WHERE razorpay_order_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_razorpay_payment_id_unique
+  ON enrollments (razorpay_payment_id)
+  WHERE razorpay_payment_id IS NOT NULL;
