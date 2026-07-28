@@ -263,7 +263,7 @@ export default function ContactPage() {
                           type="tel"
                           value={form.phone}
                           onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                          placeholder="+91 97229 33197"
+                          placeholder="Enter 10-digit mobile number"
                           className="w-full h-11 px-4 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#9B59D0]"
                           required
                         />

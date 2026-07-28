@@ -448,7 +448,7 @@ export function EnrollmentModal({
                         onChange={(e) =>
                           setForm((f) => ({ ...f, phone: e.target.value }))
                         }
-                        placeholder="+91 97229 33197"
+                        placeholder="Enter 10-digit mobile number"
                         className="mt-2 bg-black/30 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#9B59D0]"
                       />
                     </div>
