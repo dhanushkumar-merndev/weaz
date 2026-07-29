@@ -166,6 +166,25 @@ body.has-webinar-announcement main {
   animation: floaty 6s ease-in-out infinite;
 }
 
+@keyframes company-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.company-marquee-track {
+  animation: company-marquee 36s linear infinite;
+  contain: layout paint;
+  will-change: transform;
+}
+
+.company-marquee-track:hover {
+  animation-play-state: paused;
+}
+
 /* Selection */
 ::selection {
   background: var(--weaz-purple);
@@ -246,6 +265,10 @@ body.has-webinar-announcement main {
   .btn-shine::before {
     animation-duration: 5s;
   }
+
+  .company-marquee-track {
+    animation-duration: 28s;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -254,5 +277,9 @@ body.has-webinar-announcement main {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .company-marquee-track {
+    animation: none !important;
   }
 }

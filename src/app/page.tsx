@@ -4,6 +4,7 @@ import React, { useState, useCallback } from "react";
 import Navbar from "@/components/weaz/Navbar";
 import Hero from "@/components/weaz/Hero";
 import { AiFutureBanner } from "@/components/weaz/AiFutureBanner";
+import { CompanyMarquee } from "@/components/weaz/CompanyMarquee";
 import About from "@/components/weaz/About";
 import ProgramsOrbit from "@/components/weaz/ProgramsOrbit";
 import ProgramDeepDives from "@/components/weaz/ProgramDeepDives";
@@ -51,6 +52,7 @@ export default function Home() {
 
       <main className="relative z-10">
         <Hero onEnroll={() => openModal("")} />
+        <CompanyMarquee />
         <AiFutureBanner />
         <About />
         <ProgramsOrbit onEnroll={(p) => openModal(p)} />
