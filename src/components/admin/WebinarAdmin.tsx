@@ -81,6 +81,14 @@ export function WebinarAdmin() {
         cache: "no-store",
         signal: AbortSignal.timeout(15_000),
       });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          response.ok
+            ? "The server returned an invalid response."
+            : "The production server is temporarily unavailable."
+        );
+      }
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load webinars");
       return result;

@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import sharp from "sharp";
 import { getAdminFromRequest } from "@/lib/admin-auth";
-import { ACTIVE_WEBINAR_CACHE_TAG } from "@/lib/active-webinar";
+import { ACTIVE_WEBINAR_CACHE_TAG } from "@/lib/webinar-cache";
 import { isTrustedBrowserRequest } from "@/lib/payment-security";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
@@ -21,6 +20,20 @@ function errorResponse(message: string, status: number) {
 
 function invalidateActiveWebinarCache() {
   revalidateTag(ACTIVE_WEBINAR_CACHE_TAG, { expire: 0 });
+}
+
+async function convertPosterToWebp(source: File) {
+  // Keep the native Sharp module out of read-only GET requests. Some
+  // serverless runtimes cannot initialize its binary until it is needed.
+  const { default: sharp } = await import("sharp");
+  return sharp(Buffer.from(await source.arrayBuffer()))
+    .rotate()
+    .resize(1600, 1600, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: 84, effort: 5 })
+    .toBuffer();
 }
 
 function parseRequiredText(value: FormDataEntryValue | null, max: number) {
@@ -147,14 +160,7 @@ export async function POST(request: Request) {
 
   let webp: Buffer;
   try {
-    webp = await sharp(Buffer.from(await source.arrayBuffer()))
-      .rotate()
-      .resize(1600, 1600, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .webp({ quality: 84, effort: 5 })
-      .toBuffer();
+    webp = await convertPosterToWebp(source);
   } catch {
     return errorResponse("The uploaded image could not be processed", 400);
   }
@@ -341,14 +347,7 @@ export async function PUT(request: Request) {
 
     let webp: Buffer;
     try {
-      webp = await sharp(Buffer.from(await source.arrayBuffer()))
-        .rotate()
-        .resize(1600, 1600, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .webp({ quality: 84, effort: 5 })
-        .toBuffer();
+      webp = await convertPosterToWebp(source);
     } catch {
       return errorResponse("The uploaded image could not be processed", 400);
     }

@@ -2,8 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase";
-
-export const ACTIVE_WEBINAR_CACHE_TAG = "active-webinar";
+import { ACTIVE_WEBINAR_CACHE_TAG } from "@/lib/webinar-cache";
 
 export const getCachedActiveWebinar = unstable_cache(
   async () => {
