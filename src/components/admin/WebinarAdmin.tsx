@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   Eye,
@@ -54,6 +54,7 @@ function formatPrice(paise: number) {
 }
 
 export function WebinarAdmin() {
+  const queryClient = useQueryClient();
   const imageRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const [showForm, setShowForm] = useState(false);
@@ -72,15 +73,29 @@ export function WebinarAdmin() {
     whatsapp_group_url: "",
   });
 
-  const { data, isLoading, refetch } = useQuery<WebinarResponse>({
+  const { data, isLoading, isError, error, isFetching, refetch } =
+    useQuery<WebinarResponse>({
     queryKey: ["admin-webinars"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/webinars", { cache: "no-store" });
+      const response = await fetch("/api/admin/webinars", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load webinars");
       return result;
     },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 4_000),
+    refetchOnWindowFocus: false,
   });
+
+  const refreshWebinarData = async () => {
+    queryClient.removeQueries({ queryKey: ["active-webinar"] });
+    await refetch();
+  };
 
   const resetForm = () => {
     setForm({
@@ -128,7 +143,7 @@ export function WebinarAdmin() {
       );
       resetForm();
       setShowForm(false);
-      await refetch();
+      await refreshWebinarData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add webinar");
     } finally {
@@ -194,7 +209,7 @@ export function WebinarAdmin() {
           ? "Webinar hidden"
           : "Webinar published; any previous active webinar was hidden"
       );
-      await refetch();
+      await refreshWebinarData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Update failed");
     } finally {
@@ -220,7 +235,7 @@ export function WebinarAdmin() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not remove webinar");
       toast.success("Webinar and poster removed");
-      await refetch();
+      await refreshWebinarData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Remove failed");
     } finally {
@@ -230,8 +245,33 @@ export function WebinarAdmin() {
 
   if (isLoading) {
     return (
-      <div className="grid min-h-72 place-items-center">
-        <Loader2 size={28} className="animate-spin text-[#9B59D0]" />
+      <div className="grid min-h-72 place-items-center text-center">
+        <div>
+          <Loader2 size={28} className="mx-auto animate-spin text-[#9B59D0]" />
+          <p className="mt-3 text-sm text-white/40">Loading webinars...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="grid min-h-72 place-items-center text-center">
+        <div className="max-w-sm">
+          <p className="font-semibold text-white">Webinars could not load</p>
+          <p className="mt-2 text-sm text-white/40">
+            {error instanceof Error
+              ? error.message
+              : "Check your connection and try again."}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-5 rounded-xl bg-[#9B59D0] px-5 py-2.5 text-sm font-bold text-white"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -266,6 +306,13 @@ export function WebinarAdmin() {
           {showForm ? "Close form" : "Add webinar"}
         </button>
       </div>
+
+      {isFetching && (
+        <div className="flex items-center gap-2 text-xs text-white/35">
+          <Loader2 size={12} className="animate-spin" />
+          Refreshing webinar details...
+        </div>
+      )}
 
       {showForm && (
         <form

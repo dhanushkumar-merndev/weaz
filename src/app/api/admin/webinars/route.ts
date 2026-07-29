@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import sharp from "sharp";
 import { getAdminFromRequest } from "@/lib/admin-auth";
+import { ACTIVE_WEBINAR_CACHE_TAG } from "@/lib/active-webinar";
 import { isTrustedBrowserRequest } from "@/lib/payment-security";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
@@ -15,6 +17,10 @@ function errorResponse(message: string, status: number) {
     { error: message },
     { status, headers: { "Cache-Control": "no-store" } }
   );
+}
+
+function invalidateActiveWebinarCache() {
+  revalidateTag(ACTIVE_WEBINAR_CACHE_TAG, { expire: 0 });
 }
 
 function parseRequiredText(value: FormDataEntryValue | null, max: number) {
@@ -46,17 +52,32 @@ export async function GET(request: Request) {
   }
 
   const supabase = getSupabaseAdmin();
-  const [{ data: webinars, error }, { data: registrations }] = await Promise.all([
-    supabase.from("webinars").select("*").order("created_at", { ascending: false }),
+  const signal = AbortSignal.timeout(12_000);
+  const [
+    { data: webinars, error },
+    { data: registrations, error: registrationsError },
+  ] = await Promise.all([
+    supabase
+      .from("webinars")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .abortSignal(signal),
     supabase
       .from("webinar_registrations")
       .select(
         "id, webinar_id, status, form_data, paid_at, created_at, razorpay_payment_id"
       )
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .abortSignal(signal),
   ]);
 
-  if (error) return errorResponse("Could not load webinars", 500);
+  if (error || registrationsError) {
+    console.error(
+      "Admin webinar loading failed",
+      error?.message ?? registrationsError?.message
+    );
+    return errorResponse("Could not load webinars. Please retry.", 503);
+  }
 
   const withUrls = (webinars ?? []).map((webinar) => ({
     ...webinar,
@@ -184,6 +205,7 @@ export async function POST(request: Request) {
     return errorResponse("Could not publish the webinar", 500);
   }
 
+  invalidateActiveWebinarCache();
   return NextResponse.json(
     { webinar: { ...data, is_visible: true } },
     { status: 201 }
@@ -229,6 +251,7 @@ export async function PATCH(request: Request) {
       .eq("id", body.id)
       .maybeSingle();
     if (!data) return errorResponse("Webinar not found", 404);
+    invalidateActiveWebinarCache();
     return NextResponse.json({ webinar: data });
   }
 
@@ -239,6 +262,7 @@ export async function PATCH(request: Request) {
     .select()
     .maybeSingle();
   if (error || !data) return errorResponse("Webinar not found", 404);
+  invalidateActiveWebinarCache();
   return NextResponse.json({ webinar: data });
 }
 
@@ -375,6 +399,7 @@ export async function PUT(request: Request) {
     }
   }
 
+  invalidateActiveWebinarCache();
   return NextResponse.json({ webinar: data });
 }
 
@@ -419,5 +444,6 @@ export async function DELETE(request: Request) {
     console.error("Deleted webinar poster cleanup failed", imageError.message);
   }
 
+  invalidateActiveWebinarCache();
   return NextResponse.json({ success: true });
 }

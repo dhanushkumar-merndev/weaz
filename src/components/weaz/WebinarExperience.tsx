@@ -30,16 +30,7 @@ import {
   type RazorpayOptions,
   type RazorpaySuccessResponse,
 } from "@/lib/razorpay-checkout";
-
-interface Webinar {
-  id: string;
-  title: string;
-  announcement_text: string;
-  description: string;
-  price_paise: number;
-  image_url: string;
-  starts_at: string | null;
-}
+import { useActiveWebinar } from "@/hooks/useActiveWebinar";
 
 type ModalView = "promo" | "form" | "access" | "success" | null;
 
@@ -64,7 +55,6 @@ export function WebinarExperience() {
   const startedAt = useRef<number | null>(null);
   const promoHandled = useRef(false);
   const barRef = useRef<HTMLDivElement>(null);
-  const [webinar, setWebinar] = useState<Webinar | null>(null);
   const [barVisible, setBarVisible] = useState(true);
   const [view, setView] = useState<ModalView>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -72,23 +62,11 @@ export function WebinarExperience() {
   const [whatsAppGroupUrl, setWhatsAppGroupUrl] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", phone: "" });
   const excluded = pathname.startsWith("/admin") || pathname.startsWith("/auth");
+  const { data: webinar = null } = useActiveWebinar(!excluded);
 
   useEffect(() => {
     if (excluded) return;
     startedAt.current ??= Date.now();
-
-    let cancelled = false;
-    fetch("/api/webinars/active", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : { webinar: null }))
-      .then((data) => {
-        if (!cancelled) setWebinar(data.webinar ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setWebinar(null);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [excluded]);
 
   useEffect(() => {

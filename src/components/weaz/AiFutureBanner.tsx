@@ -2,10 +2,10 @@
 /* The background is a local static texture. */
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { ShineButton } from "@/components/ui/ShineButton";
+import { useActiveWebinar } from "@/hooks/useActiveWebinar";
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 25 },
@@ -16,34 +16,8 @@ const itemVariants: Variants = {
   },
 };
 
-interface ActiveWebinar {
-  id: string;
-  title: string;
-}
-
 export function AiFutureBanner() {
-  const [activeWebinar, setActiveWebinar] = useState<ActiveWebinar | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/webinars/active", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : { webinar: null }))
-      .then((result) => {
-        if (!cancelled) {
-          setActiveWebinar(
-            result.webinar
-              ? { id: result.webinar.id, title: result.webinar.title }
-              : null
-          );
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setActiveWebinar(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: activeWebinar = null } = useActiveWebinar();
 
   return (
     <section

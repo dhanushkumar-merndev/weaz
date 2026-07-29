@@ -70,6 +70,8 @@ export default function AdminPage() {
       return res.json();
     },
     placeholderData: (prev) => prev,
+    enabled:
+      !!user && adminCheck?.admin === true && section === "courses",
   });
 
   const columns = useMemo(
