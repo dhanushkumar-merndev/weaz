@@ -50,6 +50,15 @@ body.has-webinar-announcement main {
   padding-top: var(--webinar-announcement-height, 0px);
 }
 
+/*
+ * Razorpay mounts its checkout beside the app's Radix dialogs. Radix locks
+ * pointer events outside a modal, so explicitly keep the payment surface
+ * interactive while its checkout is present.
+ */
+.razorpay-container {
+  pointer-events: auto !important;
+}
+
 .font-display {
   font-family: 'Outfit', sans-serif;
   letter-spacing: -0.02em;

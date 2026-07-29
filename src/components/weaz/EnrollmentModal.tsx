@@ -254,7 +254,11 @@ export function EnrollmentModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      modal={step !== "paying"}
+    >
       <DialogContent className="max-w-lg bg-[#1A1525] border-white/10 text-white p-0 overflow-hidden">
         <div className="relative p-6 md:p-8">
           <div className="absolute -top-24 -right-24 w-56 h-56 rounded-full bg-[#9B59D0]/25 blur-[80px] pointer-events-none" />

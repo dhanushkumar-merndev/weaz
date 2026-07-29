@@ -294,7 +294,11 @@ export function WebinarExperience() {
         </div>
       )}
 
-      <Dialog open={view !== null} onOpenChange={closeModal}>
+      <Dialog
+        open={view !== null}
+        onOpenChange={closeModal}
+        modal={!submitting}
+      >
         <DialogContent
           className={`max-h-[92vh] overflow-y-auto border-white/10 bg-[#15111D] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 ${
             view === "promo" ? "sm:max-w-3xl" : "sm:max-w-lg"
