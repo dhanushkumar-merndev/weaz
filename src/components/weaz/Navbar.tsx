@@ -431,23 +431,64 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           >
             <div className="flex min-h-full flex-col gap-3 px-6 py-6">
               {user && (
-                <div className="flex items-center gap-3 pb-3 border-b border-white/10 mb-1">
-                  <div className="w-9 h-9 rounded-full overflow-hidden border border-[#9B59D0]/50 shrink-0">
-                    {user.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-[#9B59D0] grid place-items-center">
-                        <User size={14} className="text-white" />
+                <div className="pb-4 border-b border-white/10 mb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-[#9B59D0]/50 shrink-0">
+                      {user.user_metadata?.avatar_url ? (
+                        <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-[#9B59D0] grid place-items-center">
+                          <User size={14} className="text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate">
+                        {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
                       </div>
+                      <div className="text-xs text-white/50 truncate">{user.email}</div>
+                    </div>
+                    <span className="ml-auto shrink-0 rounded-full border border-[#9B59D0]/30 bg-[#9B59D0]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#c994f0]">
+                      {isAdmin ? "Admin" : "Student"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-white/30">
+                      Active enrollment
+                    </div>
+                    {enrollment ? (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2 text-sm text-white/85">
+                          <CreditCard size={13} className="shrink-0 text-[#FBBF24]" />
+                          <span className="truncate">{enrollment.programs?.name || "Enrolled"}</span>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2 text-xs text-white/45">
+                          <Calendar size={12} />
+                          <span>
+                            {enrollment.status === "paid"
+                              ? `Active${enrollment.programs?.duration ? ` · ${enrollment.programs.duration}` : ""}`
+                              : "Payment pending"}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 text-xs text-white/45">No active enrollment</div>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-white truncate">
-                      {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
-                    </div>
-                    <div className="text-xs text-white/50 truncate">{user.email}</div>
-                  </div>
                 </div>
+              )}
+
+              {user && isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  data-testid="nav-mobile-admin-link"
+                  className="flex items-center gap-2.5 rounded-xl border border-[#FBBF24]/20 bg-[#FBBF24]/5 px-3 py-2.5 text-sm font-semibold text-[#FBBF24]"
+                >
+                  <Shield size={15} />
+                  Admin Panel
+                </Link>
               )}
 
               {navItems.map((item, idx) => {

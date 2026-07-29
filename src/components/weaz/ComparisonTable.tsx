@@ -13,6 +13,7 @@ interface ComparisonTableProps {
 const rows = [
   {
     id: "beginner",
+    programName: "Digital Journey Begins",
     name: "Beginner Program",
     features: [
       "Digital fundamentals",
@@ -28,6 +29,7 @@ const rows = [
   },
   {
     id: "professional",
+    programName: "One Step to Business",
     name: "Professional Business Owner",
     features: [
       "Advanced marketing (SEO/SEM)",
@@ -43,6 +45,7 @@ const rows = [
   },
   {
     id: "ai-hero",
+    programName: "AI Hero",
     name: "AI Hero Program",
     features: [
       "Machine learning",
@@ -121,7 +124,7 @@ const ComparisonTable = ({ onEnroll }: ComparisonTableProps) => {
 
                 <ShineButton
                   data-testid={`pricing-enroll-${r.id}`}
-                  onClick={() => onEnroll(r.name)}
+                  onClick={() => onEnroll(r.programName)}
                   variant={r.popular ? "gold" : "purple"}
                   className="mt-8 w-full py-3.5 text-sm font-bold"
                 >

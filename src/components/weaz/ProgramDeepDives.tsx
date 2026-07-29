@@ -12,6 +12,7 @@ interface ProgramDeepDivesProps {
 
 interface Program {
   id: string;
+  programName: string;
   tag: string;
   title: string;
   subtitle: string;
@@ -25,6 +26,7 @@ interface Program {
 const programs: Program[] = [
   {
     id: "beginner",
+    programName: "Digital Journey Begins",
     tag: "6-Month Curriculum",
     title: "Beginner Students & Freshers",
     subtitle: "Digital Journey Begins",
@@ -49,6 +51,7 @@ const programs: Program[] = [
   },
   {
     id: "professional",
+    programName: "One Step to Business",
     tag: "For Founders & Owners",
     title: "Professional Business Owner",
     subtitle: "One Step to Business",
@@ -73,6 +76,7 @@ const programs: Program[] = [
   },
   {
     id: "ai-hero",
+    programName: "AI Hero",
     tag: "3-Month Intensive",
     title: "AI Hero",
     subtitle: "Build. Automate. Scale.",
@@ -203,7 +207,7 @@ const DeepDive = ({
           <div className="mt-10">
             <ShineButton
               data-testid={`program-${p.id}-enroll-btn`}
-              onClick={() => onEnroll(p.title)}
+              onClick={() => onEnroll(p.programName)}
               variant="gold"
               className="px-7 py-3.5"
             >

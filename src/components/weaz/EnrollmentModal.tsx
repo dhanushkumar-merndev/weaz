@@ -51,6 +51,17 @@ function formatPrice(paise: number) {
   }).format(paise / 100);
 }
 
+const programAliases: Record<string, string> = {
+  "beginner students & freshers": "digital journey begins",
+  "beginner program": "digital journey begins",
+  "professional business owner": "one step to business",
+  "ai hero program": "ai hero",
+};
+
+function normalizeProgramName(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export function EnrollmentModal({
   open,
   onOpenChange,
@@ -76,9 +87,11 @@ export function EnrollmentModal({
       setLoadingPrograms(false);
 
       if (rawDefault && data) {
+        const normalizedDefault = normalizeProgramName(rawDefault);
+        const wantedName =
+          programAliases[normalizedDefault] || normalizedDefault;
         const match = data.find(
-          (p) =>
-            p.name.toLowerCase().includes(rawDefault.toLowerCase().split(" ")[0])
+          (p) => normalizeProgramName(p.name) === wantedName
         );
         if (match) setSelectedProgramId(String(match.id));
       }

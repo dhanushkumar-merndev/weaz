@@ -12,6 +12,7 @@ interface ProgramsOrbitProps {
 const nodes = [
   {
     id: "beginner",
+    programName: "Digital Journey Begins",
     title: "Beginner Students & Freshers",
     tagline: "Digital Journey Begins",
     icon: GraduationCap,
@@ -19,6 +20,7 @@ const nodes = [
   },
   {
     id: "professional",
+    programName: "One Step to Business",
     title: "Professional Business Owner",
     tagline: "One Step to Business",
     icon: Briefcase,
@@ -26,6 +28,7 @@ const nodes = [
   },
   {
     id: "ai-hero",
+    programName: "AI Hero",
     title: "AI Hero",
     tagline: "Build. Automate. Scale.",
     icon: Cpu,
@@ -58,7 +61,7 @@ const ProgramsOrbit = ({ onEnroll }: ProgramsOrbitProps) => {
             return (
               <motion.button
                 key={n.id}
-                onClick={() => onEnroll(n.title)}
+                onClick={() => onEnroll(n.programName)}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -130,7 +133,7 @@ const ProgramsOrbit = ({ onEnroll }: ProgramsOrbitProps) => {
               return (
                 <motion.button
                   key={n.id}
-                  onClick={() => onEnroll(n.title)}
+                  onClick={() => onEnroll(n.programName)}
                   data-testid={`orbit-node-${n.id}`}
                   initial={{ opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
