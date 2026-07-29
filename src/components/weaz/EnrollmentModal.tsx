@@ -112,6 +112,26 @@ export function EnrollmentModal({
     }
   }, [open]);
 
+  useEffect(() => {
+    document.body.dataset.enrollmentModalOpen = String(open);
+    window.dispatchEvent(
+      new CustomEvent("weaz-enrollment-modal-change", {
+        detail: { open },
+      })
+    );
+
+    return () => {
+      if (open) {
+        document.body.dataset.enrollmentModalOpen = "false";
+        window.dispatchEvent(
+          new CustomEvent("weaz-enrollment-modal-change", {
+            detail: { open: false },
+          })
+        );
+      }
+    };
+  }, [open]);
+
   const selectedProgram = programs.find(
     (p) => String(p.id) === selectedProgramId
   );

@@ -59,6 +59,11 @@ export function WebinarExperience() {
   const barRef = useRef<HTMLDivElement>(null);
   const [barVisible, setBarVisible] = useState(true);
   const [view, setView] = useState<ModalView>(null);
+  const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.body.dataset.enrollmentModalOpen === "true"
+  );
   const [submitting, setSubmitting] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [whatsAppGroupUrl, setWhatsAppGroupUrl] = useState<string | null>(null);
@@ -72,18 +77,40 @@ export function WebinarExperience() {
   }, [excluded]);
 
   useEffect(() => {
+    const handleEnrollmentModalChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ open?: boolean }>;
+      setEnrollmentModalOpen(customEvent.detail?.open === true);
+    };
+
+    window.addEventListener(
+      "weaz-enrollment-modal-change",
+      handleEnrollmentModalChange
+    );
+    return () =>
+      window.removeEventListener(
+        "weaz-enrollment-modal-change",
+        handleEnrollmentModalChange
+      );
+  }, []);
+
+  useEffect(() => {
     if (!webinar) return;
     if (promoHandled.current) return;
+    if (enrollmentModalOpen || view !== null) return;
 
     const elapsed = Date.now() - (startedAt.current ?? Date.now());
     const timer = window.setTimeout(() => {
-      if (view === null && !promoHandled.current) {
+      if (
+        view === null &&
+        !enrollmentModalOpen &&
+        !promoHandled.current
+      ) {
         promoHandled.current = true;
         setView("promo");
       }
     }, Math.max(0, 10_000 - elapsed));
     return () => window.clearTimeout(timer);
-  }, [webinar, view]);
+  }, [enrollmentModalOpen, webinar, view]);
 
   useEffect(() => {
     const root = document.documentElement;
