@@ -21,6 +21,45 @@ function invalidateActiveWebinarCache() {
   revalidateTag(ACTIVE_WEBINAR_CACHE_TAG, { expire: 0 });
 }
 
+async function activateWebinar(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  webinarId: string
+) {
+  const { error: rpcError } = await supabase.rpc("activate_webinar", {
+    target_webinar_id: webinarId,
+  });
+  if (!rpcError) return null;
+
+  // This keeps publishing functional while the corrective database migration is
+  // rolling out to an environment that still has the old unscoped RPC.
+  if (!rpcError.message.toLowerCase().includes("requires a where clause")) {
+    return rpcError;
+  }
+
+  console.warn(
+    "Falling back to scoped webinar activation; apply the latest Supabase migration",
+    rpcError.message
+  );
+
+  const { error: hideError } = await supabase
+    .from("webinars")
+    .update({ is_visible: false, updated_at: new Date().toISOString() })
+    .eq("is_visible", true)
+    .neq("id", webinarId);
+  if (hideError) return hideError;
+
+  const { data, error: showError } = await supabase
+    .from("webinars")
+    .update({ is_visible: true, updated_at: new Date().toISOString() })
+    .eq("id", webinarId)
+    .select("id")
+    .maybeSingle();
+
+  if (showError) return showError;
+  if (!data) return { message: "Webinar not found" };
+  return null;
+}
+
 async function readVerifiedWebp(source: File) {
   if (
     source.type !== "image/webp" ||
@@ -204,9 +243,7 @@ export async function POST(request: Request) {
     return errorResponse("Could not create the webinar", 500);
   }
 
-  const { error: activationError } = await supabase.rpc("activate_webinar", {
-    target_webinar_id: data.id,
-  });
+  const activationError = await activateWebinar(supabase, data.id);
   if (activationError) {
     await supabase.from("webinars").delete().eq("id", data.id);
     await supabase.storage.from(BUCKET).remove([imagePath]);
@@ -249,9 +286,7 @@ export async function PATCH(request: Request) {
 
   const supabase = getSupabaseAdmin();
   if (body.is_visible) {
-    const { error } = await supabase.rpc("activate_webinar", {
-      target_webinar_id: body.id,
-    });
+    const error = await activateWebinar(supabase, body.id);
     if (error) return errorResponse("Webinar not found", 404);
 
     const { data } = await supabase

@@ -18,6 +18,7 @@ const navItems = [
   { href: "/programs", label: "Programs" },
   { href: "/pricing", label: "Pricing" },
   { href: "/outcomes", label: "Outcomes" },
+  { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -168,7 +169,10 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
 
         <nav className="hidden md:flex items-center gap-8">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
@@ -344,7 +348,10 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
               )}
 
               {navItems.map((item, idx) => {
-                const isActive = pathname === item.href;
+                const isActive =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
                 return (
                   <motion.div
                     key={item.href}

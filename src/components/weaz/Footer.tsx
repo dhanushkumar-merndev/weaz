@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Phone, Mail, Globe } from "lucide-react";
+import Link from "next/link";
 
 const Footer = () => {
   return (
@@ -117,7 +118,12 @@ const Footer = () => {
 
         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
           <div>© {new Date().getFullYear()} WEAZ Tech. All rights reserved.</div>
-          <div>Learn. Build. Grow. Lead with AI.</div>
+          <div className="flex items-center gap-4">
+            <Link href="/blog" className="transition hover:text-white">
+              Blog
+            </Link>
+            <span>Learn. Build. Grow. Lead with AI.</span>
+          </div>
         </div>
       </div>
     </footer>

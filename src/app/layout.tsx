@@ -7,7 +7,11 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { WebinarExperience } from "@/components/weaz/WebinarExperience";
 
 export const metadata: Metadata = {
-  title: "WEAZ TECH | Digital Entrepreneurship & AI",
+  metadataBase: new URL("https://www.weaztech.com"),
+  title: {
+    default: "WEAZ TECH | Digital Entrepreneurship & AI",
+    template: "%s | WEAZ TECH",
+  },
   description:
     "Learn. Build. Grow. Lead with AI. Real skills, real mentors, real outcomes. A community of tech-savvy founders and operators shaping India's AI-first economy.",
   icons: {
@@ -22,6 +26,31 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/site.webmanifest",
+  openGraph: {
+    type: "website",
+    siteName: "WEAZ TECH",
+    title: "WEAZ TECH | Digital Entrepreneurship & AI",
+    description:
+      "Learn. Build. Grow. Lead with AI through practical skills, mentors and real projects.",
+    url: "/",
+    images: [
+      {
+        url: "/images/team-collaboration.jpg",
+        alt: "WEAZ TECH digital entrepreneurship and AI community",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WEAZ TECH | Digital Entrepreneurship & AI",
+    description:
+      "Practical digital entrepreneurship and AI education for India's next generation of builders.",
+    images: ["/images/team-collaboration.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
