@@ -13,6 +13,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAuth } from "@/providers/AuthProvider";
 import { Search, Loader2, ShieldAlert, Shield, ChevronLeft, ChevronRight, ArrowUpDown, LogOut, Home } from "lucide-react";
+import { WebinarAdmin } from "@/components/admin/WebinarAdmin";
 
 interface EnrollmentRow {
   id: string;
@@ -39,6 +40,7 @@ export default function AdminPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [section, setSection] = useState<"courses" | "webinars">("courses");
   const limit = 20;
 
   useEffect(() => {
@@ -172,6 +174,33 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <div className="mb-7 inline-flex rounded-xl border border-white/[0.07] bg-white/[0.03] p-1">
+          <button
+            type="button"
+            onClick={() => setSection("courses")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              section === "courses"
+                ? "bg-[#9B59D0] text-white shadow-lg shadow-[#9B59D0]/20"
+                : "text-white/45 hover:text-white"
+            }`}
+          >
+            Platform Courses
+          </button>
+          <button
+            type="button"
+            onClick={() => setSection("webinars")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              section === "webinars"
+                ? "bg-[#9B59D0] text-white shadow-lg shadow-[#9B59D0]/20"
+                : "text-white/45 hover:text-white"
+            }`}
+          >
+            Webinars
+          </button>
+        </div>
+
+        {section === "courses" ? (
+          <>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="relative w-full sm:w-72">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
@@ -258,6 +287,10 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
+        )}
+          </>
+        ) : (
+          <WebinarAdmin />
         )}
       </main>
     </div>

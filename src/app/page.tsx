@@ -49,7 +49,7 @@ export default function Home() {
       <Navbar onEnroll={() => openModal("")} />
 
       <main className="relative z-10">
-        <Hero onEnroll={() => openModal("")} />
+        <Hero />
         <About />
         <ProgramsOrbit onEnroll={(p) => openModal(p)} />
         <ProgramDeepDives onEnroll={(p) => openModal(p)} />

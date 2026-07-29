@@ -114,16 +114,87 @@ export async function POST(request: Request) {
       .from("enrollments")
       .select("id, status, razorpay_payment_id, programs!inner(price_paise)")
       .eq("razorpay_order_id", payment.order_id)
-      .single();
+      .maybeSingle();
 
     if (enrollmentError || !enrollment) {
-      console.error("Webhook order has no matching enrollment", {
-        eventId,
-        orderId: payment.order_id,
-        paymentId: payment.id,
-      });
-      // Non-2xx tells Razorpay to retry while an order/database race resolves.
-      return errorResponse("Payment order not found", 404);
+      const { data: registration, error: registrationError } = await supabase
+        .from("webinar_registrations")
+        .select("id, status, razorpay_payment_id, webinars!inner(price_paise)")
+        .eq("razorpay_order_id", payment.order_id)
+        .maybeSingle();
+
+      if (registrationError || !registration) {
+        console.error("Webhook order has no matching purchase", {
+          eventId,
+          orderId: payment.order_id,
+          paymentId: payment.id,
+        });
+        // Non-2xx tells Razorpay to retry while an order/database race resolves.
+        return errorResponse("Payment order not found", 404);
+      }
+
+      const expectedWebinarAmount = asPositiveInteger(
+        (registration.webinars as { price_paise: number }).price_paise
+      );
+      if (!expectedWebinarAmount || expectedWebinarAmount !== amount) {
+        console.error("Webhook amount does not match webinar registration", {
+          eventId,
+          registrationId: registration.id,
+          orderId: payment.order_id,
+          paymentId: payment.id,
+        });
+        return errorResponse("Payment amount mismatch", 409);
+      }
+
+      if (registration.status === "paid") {
+        return registration.razorpay_payment_id === payment.id
+          ? NextResponse.json({ received: true })
+          : errorResponse("Registration is linked to another payment", 409);
+      }
+      if (registration.status !== "pending") {
+        return errorResponse("Registration is not awaiting payment", 409);
+      }
+
+      const now = new Date().toISOString();
+      const { data: updated, error: updateError } = await supabase
+        .from("webinar_registrations")
+        .update({
+          status: "paid",
+          razorpay_payment_id: payment.id,
+          paid_at: now,
+          updated_at: now,
+        })
+        .eq("id", registration.id)
+        .eq("status", "pending")
+        .is("razorpay_payment_id", null)
+        .select("id")
+        .maybeSingle();
+
+      if (updateError) {
+        console.error("Webhook could not mark webinar registration as paid", {
+          eventId,
+          registrationId: registration.id,
+          paymentId: payment.id,
+          error: updateError.message,
+        });
+        return errorResponse("Could not save payment confirmation", 500);
+      }
+
+      if (!updated) {
+        const { data: reconciled } = await supabase
+          .from("webinar_registrations")
+          .select("status, razorpay_payment_id")
+          .eq("id", registration.id)
+          .single();
+        if (
+          reconciled?.status !== "paid" ||
+          reconciled.razorpay_payment_id !== payment.id
+        ) {
+          return errorResponse("Payment confirmation conflict", 409);
+        }
+      }
+
+      return NextResponse.json({ received: true });
     }
 
     const expectedAmount = asPositiveInteger(

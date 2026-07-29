@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import SmoothScroll from "@/components/SmoothScroll";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { WebinarExperience } from "@/components/weaz/WebinarExperience";
 
 export const metadata: Metadata = {
   title: "WEAZ TECH | Digital Entrepreneurship & AI",
@@ -34,6 +35,7 @@ export default function RootLayout({
         <SmoothScroll>
           <QueryProvider>
             <AuthProvider>
+              <WebinarExperience />
               {children}
             </AuthProvider>
           </QueryProvider>

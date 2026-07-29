@@ -146,7 +146,8 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
   return (
     <header
       data-testid="site-navbar"
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      style={{ top: "var(--webinar-announcement-height, 0px)" }}
+      className={`fixed left-0 right-0 z-50 transition-all duration-300 ${
         scrolled ? "glass-nav shadow-lg shadow-black/20" : "bg-[#0F0B14]/80 backdrop-blur-md border-b border-white/5"
       }`}
     >

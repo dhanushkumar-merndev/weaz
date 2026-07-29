@@ -46,6 +46,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.has-webinar-announcement main {
+  padding-top: var(--webinar-announcement-height, 0px);
+}
+
 .font-display {
   font-family: 'Outfit', sans-serif;
   letter-spacing: -0.02em;
@@ -252,4 +256,3 @@ body {
     scroll-behavior: auto !important;
   }
 }
-
