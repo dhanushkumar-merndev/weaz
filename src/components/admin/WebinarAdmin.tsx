@@ -53,6 +53,52 @@ function formatPrice(paise: number) {
   }).format(paise / 100);
 }
 
+async function convertImageToWebp(file: File) {
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error(
+      "This browser could not read that image. Please use JPG, PNG, AVIF or WebP."
+    );
+  }
+
+  try {
+    const maxDimension = 1600;
+    const scale = Math.min(
+      1,
+      maxDimension / Math.max(bitmap.width, bitmap.height)
+    );
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("Image conversion is not available");
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/webp", 0.84)
+    );
+    if (!blob || blob.type !== "image/webp") {
+      throw new Error("This browser does not support WebP conversion");
+    }
+    if (blob.size > 5 * 1024 * 1024) {
+      throw new Error("Converted poster is larger than 5 MB");
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "webinar-poster";
+    return new File([blob], `${baseName}.webp`, {
+      type: "image/webp",
+      lastModified: Date.now(),
+    });
+  } finally {
+    bitmap.close();
+  }
+}
+
 export function WebinarAdmin() {
   const queryClient = useQueryClient();
   const imageRef = useRef<HTMLInputElement>(null);
@@ -135,7 +181,10 @@ export function WebinarAdmin() {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       if (editingId) body.append("id", editingId);
-      if (image) body.append("image", image);
+      if (image) {
+        const webpImage = await convertImageToWebp(image);
+        body.append("image", webpImage, webpImage.name);
+      }
       const response = await fetch("/api/admin/webinars", {
         method: editingId ? "PUT" : "POST",
         body,
@@ -147,7 +196,7 @@ export function WebinarAdmin() {
           ? image
             ? "Webinar updated and new poster converted to WebP"
             : "Webinar updated"
-          : "Webinar added and poster converted to WebP"
+          : "Webinar added and poster converted to WebP in your browser"
       );
       resetForm();
       setShowForm(false);
@@ -519,7 +568,7 @@ export function WebinarAdmin() {
                   <div className="mt-1 text-xs leading-5 text-white/35">
                     JPG, PNG, AVIF or WebP up to 10 MB.
                     <br />
-                    Saved to Supabase as WebP.
+                    Converted locally, then saved to Supabase as WebP.
                   </div>
                 </div>
               </div>

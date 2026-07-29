@@ -9,7 +9,6 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 export const runtime = "nodejs";
 
 const BUCKET = "webinar-posters";
-const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -22,18 +21,22 @@ function invalidateActiveWebinarCache() {
   revalidateTag(ACTIVE_WEBINAR_CACHE_TAG, { expire: 0 });
 }
 
-async function convertPosterToWebp(source: File) {
-  // Keep the native Sharp module out of read-only GET requests. Some
-  // serverless runtimes cannot initialize its binary until it is needed.
-  const { default: sharp } = await import("sharp");
-  return sharp(Buffer.from(await source.arrayBuffer()))
-    .rotate()
-    .resize(1600, 1600, {
-      fit: "inside",
-      withoutEnlargement: true,
-    })
-    .webp({ quality: 84, effort: 5 })
-    .toBuffer();
+async function readVerifiedWebp(source: File) {
+  if (
+    source.type !== "image/webp" ||
+    source.size <= 0 ||
+    source.size > 5 * 1024 * 1024
+  ) {
+    throw new Error("Poster must be a WebP file smaller than 5 MB");
+  }
+
+  const buffer = Buffer.from(await source.arrayBuffer());
+  const isWebp =
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP";
+  if (!isWebp) throw new Error("Poster has an invalid WebP signature");
+  return buffer;
 }
 
 function parseRequiredText(value: FormDataEntryValue | null, max: number) {
@@ -142,11 +145,8 @@ export async function POST(request: Request) {
   if (!Number.isFinite(priceRupees) || priceRupees <= 0 || priceRupees > 10_000_000) {
     return errorResponse("Enter a valid webinar price", 400);
   }
-  if (!(source instanceof File) || !source.type.startsWith("image/")) {
+  if (!(source instanceof File)) {
     return errorResponse("Choose a valid poster image", 400);
-  }
-  if (source.size <= 0 || source.size > MAX_SOURCE_BYTES) {
-    return errorResponse("Poster must be smaller than 10 MB", 400);
   }
 
   let startsAt: string | null = null;
@@ -160,9 +160,12 @@ export async function POST(request: Request) {
 
   let webp: Buffer;
   try {
-    webp = await convertPosterToWebp(source);
-  } catch {
-    return errorResponse("The uploaded image could not be processed", 400);
+    webp = await readVerifiedWebp(source);
+  } catch (error) {
+    return errorResponse(
+      error instanceof Error ? error.message : "Invalid WebP poster",
+      400
+    );
   }
 
   const supabase = getSupabaseAdmin();
@@ -341,15 +344,14 @@ export async function PUT(request: Request) {
 
   let replacementPath: string | null = null;
   if (source instanceof File && source.size > 0) {
-    if (!source.type.startsWith("image/") || source.size > MAX_SOURCE_BYTES) {
-      return errorResponse("Choose a valid poster smaller than 10 MB", 400);
-    }
-
     let webp: Buffer;
     try {
-      webp = await convertPosterToWebp(source);
-    } catch {
-      return errorResponse("The uploaded image could not be processed", 400);
+      webp = await readVerifiedWebp(source);
+    } catch (error) {
+      return errorResponse(
+        error instanceof Error ? error.message : "Invalid WebP poster",
+        400
+      );
     }
 
     replacementPath = `${new Date().getUTCFullYear()}/${randomUUID()}.webp`;
