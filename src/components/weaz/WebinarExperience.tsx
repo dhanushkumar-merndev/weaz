@@ -62,6 +62,7 @@ export function WebinarExperience() {
   const pathname = usePathname();
   const { user, signInWithGoogle } = useAuth();
   const startedAt = useRef<number | null>(null);
+  const promoHandled = useRef(false);
   const barRef = useRef<HTMLDivElement>(null);
   const [webinar, setWebinar] = useState<Webinar | null>(null);
   const [barVisible, setBarVisible] = useState(true);
@@ -92,13 +93,12 @@ export function WebinarExperience() {
 
   useEffect(() => {
     if (!webinar) return;
-    const seenKey = `weaz-webinar-promo:${webinar.id}`;
-    if (sessionStorage.getItem(seenKey)) return;
+    if (promoHandled.current) return;
 
     const elapsed = Date.now() - (startedAt.current ?? Date.now());
     const timer = window.setTimeout(() => {
-      if (view === null) {
-        sessionStorage.setItem(seenKey, "shown");
+      if (view === null && !promoHandled.current) {
+        promoHandled.current = true;
         setView("promo");
       }
     }, Math.max(0, 10_000 - elapsed));
@@ -150,7 +150,7 @@ export function WebinarExperience() {
 
   const openForm = useCallback(async () => {
     if (!webinar) return;
-    sessionStorage.setItem(`weaz-webinar-promo:${webinar.id}`, "opened");
+    promoHandled.current = true;
     setForm((current) => ({
       ...current,
       name:
