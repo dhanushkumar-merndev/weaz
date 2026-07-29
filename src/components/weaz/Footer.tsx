@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { Phone, Mail, Globe } from "lucide-react";
+import { Phone, Mail, Globe, MapPin } from "lucide-react";
 import Link from "next/link";
+import { WEAZ_ADDRESS_TEXT, WEAZ_MAP_URL } from "@/lib/site-details";
 
 const Footer = () => {
   return (
@@ -104,6 +105,29 @@ const Footer = () => {
                   Social
                 </div>
                 <div className="mt-1 font-semibold text-white">@weaztech</div>
+              </div>
+            </a>
+
+            <a
+              href={WEAZ_MAP_URL}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="footer-address-link"
+              className="p-5 rounded-2xl border border-white/10 hover:border-[#9B59D0]/50 transition-colors flex items-start gap-3 sm:col-span-2"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#9B59D0]/15 border border-[#9B59D0]/30 grid place-items-center shrink-0">
+                <MapPin size={17} className="text-[#9B59D0]" />
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.25em] text-white/50 font-bold">
+                  Office Address
+                </div>
+                <address className="mt-1 font-semibold leading-relaxed text-white not-italic">
+                  {WEAZ_ADDRESS_TEXT}
+                </address>
+                <div className="mt-2 text-xs font-bold text-[#FBBF24]">
+                  Open in Google Maps
+                </div>
               </div>
             </a>
           </div>

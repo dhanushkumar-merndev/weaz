@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import { BlogShell } from "@/components/weaz/BlogShell";
 import { blogPosts, getBlogPost } from "@/content/blogs";
-
-const SITE_URL = "https://www.weaztech.com";
+import { SITE_URL } from "@/lib/site-details";
 
 export function generateStaticParams() {
   return blogPosts.map((post) => ({ slug: post.slug }));

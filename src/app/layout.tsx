@@ -5,6 +5,22 @@ import SmoothScroll from "@/components/SmoothScroll";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { WebinarExperience } from "@/components/weaz/WebinarExperience";
+import { SITE_URL, WEAZ_ADDRESS } from "@/lib/site-details";
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "@id": `${SITE_URL}/#organization`,
+  name: "WEAZ TECH",
+  url: SITE_URL,
+  logo: `${SITE_URL}/android-chrome-512x512.png`,
+  telephone: "+91 97429 33197",
+  email: "hello@weaztech.com",
+  address: {
+    "@type": "PostalAddress",
+    ...WEAZ_ADDRESS,
+  },
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.weaztech.com"),
@@ -61,6 +77,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" data-scroll-behavior="smooth">
       <body className="bg-[#0F0B14] text-white antialiased" suppressHydrationWarning>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
         <SmoothScroll>
           <QueryProvider>
             <AuthProvider>

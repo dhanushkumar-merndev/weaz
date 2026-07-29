@@ -7,8 +7,18 @@ import Footer from "@/components/weaz/Footer";
 import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 import { GsapReveal } from "@/components/ui/GsapReveal";
-import { Phone, Mail, Globe, MessageSquare, Send, Clock,} from "lucide-react";
+import {
+  Phone,
+  Mail,
+  Globe,
+  MessageSquare,
+  Send,
+  Clock,
+  MapPin,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
+import { WEAZ_ADDRESS_TEXT, WEAZ_MAP_URL } from "@/lib/site-details";
 
 const WHATSAPP_NUMBER = "919742933197";
 
@@ -155,6 +165,29 @@ export default function ContactPage() {
                       <div className="text-base font-semibold text-white mt-0.5">
                         weaztechnology@gmail.com
                       </div>
+                    </div>
+                  </a>
+
+                  <a
+                    href={WEAZ_MAP_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="contact-address-link"
+                    className="flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:border-[#FBBF24]/40 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#FBBF24]/15 border border-[#FBBF24]/30 grid place-items-center shrink-0">
+                      <MapPin size={18} className="text-[#FBBF24]" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs uppercase tracking-wider text-white/50 font-bold">
+                        Office Address
+                      </div>
+                      <address className="text-sm font-semibold leading-relaxed text-white mt-1 not-italic">
+                        {WEAZ_ADDRESS_TEXT}
+                      </address>
+                      <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#FBBF24]">
+                        View on Google Maps <ExternalLink size={12} />
+                      </span>
                     </div>
                   </a>
 
