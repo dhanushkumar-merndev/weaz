@@ -60,7 +60,7 @@ const rows = [
 
 const ComparisonTable = ({ onEnroll }: ComparisonTableProps) => {
   return (
-    <section id="pricing" data-testid="pricing-section" className="relative py-24 md:py-32 overflow-hidden">
+    <section id="pricing" data-testid="pricing-section" className="relative pt-8 pb-24 md:pt-12 md:pb-32 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <FadeIn direction="up">
           <div className="max-w-3xl">

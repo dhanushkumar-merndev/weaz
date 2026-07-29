@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 
 export default function SmoothScroll({ children }: { children: ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -23,10 +25,25 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
 
     requestAnimationFrame(raf);
 
+    const resetBeforeNavigation = () => {
+      lenis.scrollTo(0, { immediate: true, force: true });
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    };
+
+    window.addEventListener("weaz-route-start", resetBeforeNavigation);
+
     return () => {
+      window.removeEventListener("weaz-route-start", resetBeforeNavigation);
       lenis.destroy();
     };
   }, []);
+
+  useEffect(() => {
+    // Lenis can retain the previous document's position across Next.js routes.
+    // Reset both Lenis and the native window scroll when the pathname changes.
+    lenisRef.current?.scrollTo(0, { immediate: true, force: true });
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname]);
 
   return <>{children}</>;
 }

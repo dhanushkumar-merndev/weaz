@@ -18,7 +18,7 @@ const steps = [
 
 const FinalCTA = ({ onEnroll }: FinalCTAProps) => {
   return (
-    <section data-testid="final-cta-section" className="relative py-24 md:py-32 overflow-hidden">
+    <section data-testid="final-cta-section" className="relative pt-8 pb-12 md:pt-12 md:pb-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <FadeIn direction="up">
           <div className="relative surface-card p-8 md:p-16 overflow-hidden border-white/15 shadow-2xl">

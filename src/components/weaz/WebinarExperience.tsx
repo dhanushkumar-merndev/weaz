@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
+  ArrowRight,
   CalendarDays,
   CheckCircle2,
   CreditCard,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ShineButton } from "@/components/ui/ShineButton";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   loadRazorpayScript,
@@ -87,7 +89,7 @@ export function WebinarExperience() {
     const root = document.documentElement;
     const body = document.body;
 
-    if (!webinar || !barVisible || excluded) {
+    if (!webinar || !barVisible || excluded || view !== null) {
       root.style.setProperty("--webinar-announcement-height", "0px");
       body.classList.remove("has-webinar-announcement");
       return;
@@ -106,7 +108,7 @@ export function WebinarExperience() {
       root.style.setProperty("--webinar-announcement-height", "0px");
       body.classList.remove("has-webinar-announcement");
     };
-  }, [barVisible, excluded, webinar]);
+  }, [barVisible, excluded, view, webinar]);
 
   const checkPurchasedAccess = useCallback(async () => {
     if (!user || !webinar) return false;
@@ -266,7 +268,7 @@ export function WebinarExperience() {
 
   return (
     <>
-      {barVisible && (
+      {barVisible && view === null && (
         <div
           ref={barRef}
           className="fixed inset-x-0 top-0 z-[60] border-b border-[#FBBF24]/20 bg-[#17121f]/95 px-10 py-2 text-center shadow-lg shadow-black/20 backdrop-blur-xl"
@@ -300,54 +302,59 @@ export function WebinarExperience() {
         modal={!submitting}
       >
         <DialogContent
-          className={`max-h-[92vh] overflow-y-auto border-white/10 bg-[#15111D] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 ${
-            view === "promo" ? "sm:max-w-3xl" : "sm:max-w-lg"
+          data-lenis-prevent
+          className={`!left-2 !top-2 !right-2 !bottom-2 !block !h-[calc(100dvh_-_1rem)] !max-h-none !w-auto !max-w-none !translate-x-0 !translate-y-0 touch-pan-y overflow-x-hidden overflow-y-scroll overscroll-contain rounded-2xl border border-white/10 bg-[#171021] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [&>button]:sticky [&>button]:top-3 [&>button]:z-20 [&>button]:ml-auto [&>button]:mr-3 [&>button]:-mb-10 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-black/45 [&>button]:text-white [&>button]:opacity-100 [&>button]:backdrop-blur-md [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white/30 sm:!left-1/2 sm:!top-1/2 sm:!right-auto sm:!bottom-auto sm:!grid sm:!h-auto sm:!max-h-[92vh] sm:!w-full sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-2xl sm:p-3 sm:[&>button]:absolute sm:[&>button]:right-4 sm:[&>button]:top-4 sm:[&>button]:m-0 ${
+            view === "promo"
+              ? "sm:!max-w-3xl"
+              : "!left-1/2 !top-1/2 !right-auto !bottom-auto !h-auto !max-h-[calc(100dvh_-_1.5rem)] !w-[calc(100%_-_1.5rem)] !max-w-lg !translate-x-[-50%] !translate-y-[-50%] overflow-y-auto [&>button]:absolute [&>button]:right-3 [&>button]:top-3 [&>button]:m-0 sm:!max-w-lg"
           }`}
         >
           {view === "promo" && (
-            <div className="grid overflow-hidden sm:grid-cols-[0.95fr_1.05fr]">
-              <div className="relative min-h-64 bg-black sm:min-h-[470px]">
+            <div className="flex min-h-full flex-col overflow-hidden bg-[radial-gradient(circle_at_20%_10%,rgba(126,54,170,0.22),transparent_42%),#171021] sm:grid sm:min-h-0 sm:grid-cols-[0.95fr_1.05fr]">
+              <div className="relative shrink-0 overflow-hidden bg-[radial-gradient(circle_at_50%_35%,#32104d_0%,#16091f_72%)] sm:h-auto sm:min-h-[500px] sm:rounded-xl">
                 <img
                   src={webinar.image_url}
                   alt={`${webinar.title} webinar poster`}
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className="relative block h-auto w-full sm:absolute sm:inset-0 sm:h-full sm:object-cover sm:object-center"
                   decoding="async"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#15111D]/80 via-transparent to-transparent sm:bg-gradient-to-r" />
               </div>
-              <div className="flex flex-col justify-center p-6 sm:p-9">
-                <div className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#FBBF24]">
+              <div className="relative flex flex-1 flex-col px-5 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] pt-3 sm:justify-center sm:p-9">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.26em] text-[#FBBF24] sm:mb-3 sm:text-xs">
                   Live webinar
                 </div>
-                <DialogTitle className="font-display text-3xl font-black leading-tight">
+                <DialogTitle className="max-w-md font-display text-[1.75rem] font-black leading-[1.05] sm:text-3xl">
                   {webinar.title}
                 </DialogTitle>
-                <DialogDescription className="mt-3 whitespace-pre-line text-sm leading-6 text-white/60">
+                <DialogDescription className="mt-2.5 max-w-md whitespace-pre-line text-sm leading-5 text-white/65 sm:mt-3 sm:leading-6">
                   {webinar.description}
                 </DialogDescription>
                 {webinar.starts_at && (
-                  <div className="mt-5 flex items-center gap-2 text-sm text-white/70">
-                    <CalendarDays size={16} className="text-[#9B59D0]" />
+                  <div className="mt-3.5 flex items-center gap-2.5 text-sm text-white/75 sm:mt-5">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#9B59D0]/15 text-[#C47CFF]">
+                      <CalendarDays size={15} />
+                    </span>
                     {formatDate(webinar.starts_at)}
                   </div>
                 )}
-                <div className="mt-6 font-display text-3xl font-black text-white">
+                <div className="mt-3.5 font-display text-[1.75rem] font-black text-white sm:mt-6 sm:text-3xl">
                   {formatPrice(webinar.price_paise)}
                 </div>
-                <button
+                <ShineButton
                   type="button"
                   onClick={openForm}
-                  className="pill-gold mt-6 inline-flex cursor-pointer items-center justify-center gap-2 px-6 py-3"
+                  variant="gold"
+                  className="mt-3.5 min-h-12 w-full !px-6 !py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021] sm:mt-auto sm:!py-3.5"
                 >
                   Reserve my seat
-                  <CreditCard size={16} />
-                </button>
+                  <ArrowRight size={18} />
+                </ShineButton>
               </div>
             </div>
           )}
 
           {view === "form" && (
-            <div className="p-6 sm:p-8">
+            <div className="flex min-h-[320px] flex-col p-5 sm:p-6 md:p-8">
               <DialogHeader>
                 <div className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-[#FBBF24]">
                   Webinar registration
@@ -366,14 +373,14 @@ export function WebinarExperience() {
                   Checking your registration...
                 </div>
               ) : !user ? (
-                <div className="py-10 text-center">
-                  <p className="mb-5 text-sm text-white/55">
+                <div className="mt-auto flex flex-col items-center pb-1 pt-8 text-center">
+                  <p className="mb-4 text-sm text-white/55">
                     Sign in to keep your registration linked to your account.
                   </p>
                   <button
                     type="button"
                     onClick={() => signInWithGoogle()}
-                    className="inline-flex items-center gap-3 rounded-xl bg-white px-6 py-3 font-bold text-[#0F0B14] transition hover:bg-white/90"
+                    className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0F0B14] shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021]"
                   >
                     <svg
                       aria-hidden="true"

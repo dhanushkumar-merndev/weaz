@@ -109,7 +109,7 @@ const DeepDive = ({
     <div
       id={`program-${p.id}`}
       data-testid={`program-deepdive-${p.id}`}
-      className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center py-16 md:py-24"
+      className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center py-16 last:pb-8 md:py-24 md:last:pb-12"
     >
       <div className={`lg:col-span-6 ${flipped ? "lg:order-2" : ""}`}>
         <FadeIn direction={flipped ? "left" : "right"}>
@@ -218,7 +218,7 @@ const DeepDive = ({
 
 const ProgramDeepDives = ({ onEnroll }: ProgramDeepDivesProps) => {
   return (
-    <section data-testid="program-deepdives-section" className="relative py-16 md:py-24 overflow-hidden">
+    <section data-testid="program-deepdives-section" className="relative pt-8 pb-10 md:pt-12 md:pb-15 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <FadeIn direction="up">
           <div className="max-w-3xl">
