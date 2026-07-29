@@ -183,9 +183,13 @@ export function EnrollmentModal({
       return;
     }
 
-    const phoneDigits = form.phone.replace(/\D/g, "").replace(/^91/, "");
+    const enteredDigits = form.phone.replace(/\D/g, "");
+    const phoneDigits =
+      enteredDigits.length === 12 && enteredDigits.startsWith("91")
+        ? enteredDigits.slice(2)
+        : enteredDigits;
     if (phoneDigits.length !== 10) {
-      toast.error("Phone number must be exactly 10 digits (e.g. 9722933197)");
+      toast.error("Phone number must be exactly 10 digits (e.g. 9742933197)");
       return;
     }
 

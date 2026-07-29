@@ -30,7 +30,7 @@ available in this workspace.
 - Database errors now return non-2xx responses so Razorpay can retry webhooks.
 - Payment and enrollment request bodies have server-side validation.
 - Authenticated payment/enrollment POST routes reject cross-site browser calls.
-- The contact and WhatsApp number is now `+91 97229 33197`.
+- The contact and WhatsApp number is now `+91 97429 33197`.
 - The hero entrance sequence now uses hydration-safe Framer Motion variants,
   preventing the hard-refresh visible/hidden/double-animation flash.
 - Navbar enrollment buttons are more compact on desktop and mobile.

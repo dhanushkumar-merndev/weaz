@@ -59,7 +59,11 @@ export async function POST(request: Request) {
   }
 
   const normalizedName = name.trim();
-  const normalizedPhone = phone.replace(/\D/g, "").replace(/^91/, "");
+  const enteredDigits = phone.replace(/\D/g, "");
+  const normalizedPhone =
+    enteredDigits.length === 12 && enteredDigits.startsWith("91")
+      ? enteredDigits.slice(2)
+      : enteredDigits;
   const normalizedMessage = message?.trim() ?? "";
 
   if (

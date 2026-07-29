@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, MessageSquare } from "lucide-react";
 
-const WHATSAPP_NUMBER = "919722933197";
+const WHATSAPP_NUMBER = "919742933197";
 
 const PROGRAMS = [
   "Beginner Program",
@@ -140,7 +140,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
               Reserve your seat
             </DialogTitle>
             <DialogDescription className="text-white/60 mt-1">
-              Fill in your details below. Submitting will direct your application to our admissions WhatsApp (+91 97229 33197).
+              Fill in your details below. Submitting will direct your application to our admissions WhatsApp (+91 97429 33197).
             </DialogDescription>
           </DialogHeader>
 
@@ -267,7 +267,7 @@ const LeadModal = ({ open, onOpenChange, defaultProgram }: LeadModalProps) => {
               </button>
 
               <p className="text-[11px] text-white/40 text-center">
-                Submitting will send your application directly to WEAZ Tech WhatsApp (+91 97229 33197).
+                Submitting will send your application directly to WEAZ Tech WhatsApp (+91 97429 33197).
               </p>
             </form>
           )}

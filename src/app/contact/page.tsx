@@ -10,7 +10,7 @@ import { GsapReveal } from "@/components/ui/GsapReveal";
 import { Phone, Mail, Globe, MessageSquare, Send, Clock,} from "lucide-react";
 import { toast } from "sonner";
 
-const WHATSAPP_NUMBER = "919722933197";
+const WHATSAPP_NUMBER = "919742933197";
 
 const currentStatusOptions = [
   "Student / Fresh Graduate",
@@ -92,7 +92,7 @@ export default function ContactPage() {
         <PageHeader
           badge="Admissions & Contact"
           title="Connect With WEAZ TECH"
-          subtitle="Call or WhatsApp +91 97229 33197 for admissions & program guidance."
+          subtitle="Call or WhatsApp +91 97429 33197 for admissions & program guidance."
           description="Have questions about program curricula, fees, EMI plans, or batch timings? Fill in the form below or message our admissions desk directly on WhatsApp."
         />
 
@@ -108,7 +108,7 @@ export default function ContactPage() {
 
                 <div className="space-y-4">
                   <a
-                    href="tel:+919722933197"
+                    href="tel:+919742933197"
                     className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:border-[#9B59D0]/40 transition-colors"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#9B59D0]/15 border border-[#9B59D0]/30 grid place-items-center shrink-0">
@@ -119,7 +119,7 @@ export default function ContactPage() {
                         Phone &amp; WhatsApp
                       </div>
                       <div className="text-base font-semibold text-white mt-0.5">
-                        +91 97229 33197
+                        +91 97429 33197
                       </div>
                     </div>
                   </a>
@@ -150,7 +150,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-wider text-white/50 font-bold">
-                        Brochure Desk Email
+                        Official Email
                       </div>
                       <div className="text-base font-semibold text-white mt-0.5">
                         weaztechnology@gmail.com
@@ -236,7 +236,7 @@ export default function ContactPage() {
                     Submit Inquiry via WhatsApp
                   </h3>
                   <p className="text-white/60 text-sm mt-2">
-                    Submit your details below to automatically open WhatsApp with your pre-formatted application text to +91 97229 33197.
+                    Submit your details below to automatically open WhatsApp with your pre-formatted application text to +91 97429 33197.
                   </p>
 
                   <form onSubmit={handleSubmit} className="mt-8 space-y-4">
