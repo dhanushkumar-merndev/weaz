@@ -32,6 +32,7 @@ import {
   type RazorpayOptions,
   type RazorpaySuccessResponse,
 } from "@/lib/razorpay-checkout";
+import { formatIndiaDateTime } from "@/lib/india-time";
 import { useActiveWebinar } from "@/hooks/useActiveWebinar";
 
 type ModalView = "promo" | "form" | "access" | "success" | null;
@@ -42,13 +43,6 @@ function formatPrice(paise: number) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(paise / 100);
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 export function WebinarExperience() {
@@ -361,7 +355,7 @@ export function WebinarExperience() {
                     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#9B59D0]/15 text-[#C47CFF]">
                       <CalendarDays size={15} />
                     </span>
-                    {formatDate(webinar.starts_at)}
+                    {formatIndiaDateTime(webinar.starts_at)}
                   </div>
                 )}
                 <div className="mt-3.5 font-display text-[1.75rem] font-black text-white sm:mt-6 sm:text-3xl">

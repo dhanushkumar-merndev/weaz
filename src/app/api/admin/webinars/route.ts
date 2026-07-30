@@ -8,6 +8,7 @@ import {
   isTrustedBrowserRequest,
 } from "@/lib/payment-security";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { parseIndiaDateTimeLocal } from "@/lib/india-time";
 
 export const runtime = "nodejs";
 
@@ -341,11 +342,10 @@ export async function POST(request: Request) {
 
   let startsAt: string | null = null;
   if (typeof startsAtValue === "string" && startsAtValue.trim()) {
-    const date = new Date(startsAtValue);
-    if (Number.isNaN(date.getTime())) {
+    startsAt = parseIndiaDateTimeLocal(startsAtValue);
+    if (!startsAt) {
       return errorResponse("Enter a valid webinar date", 400);
     }
-    startsAt = date.toISOString();
   }
 
   const supabase = getSupabaseAdmin();
@@ -527,11 +527,10 @@ export async function PUT(request: Request) {
 
   let startsAt: string | null = null;
   if (typeof startsAtValue === "string" && startsAtValue.trim()) {
-    const date = new Date(startsAtValue);
-    if (Number.isNaN(date.getTime())) {
+    startsAt = parseIndiaDateTimeLocal(startsAtValue);
+    if (!startsAt) {
       return errorResponse("Enter a valid webinar date", 400);
     }
-    startsAt = date.toISOString();
   }
 
   const supabase = getSupabaseAdmin();

@@ -27,6 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  formatIndiaDateTime,
+  formatIndiaDateTimeLocal,
+} from "@/lib/india-time";
 
 interface Webinar {
   id: string;
@@ -302,11 +306,8 @@ export function WebinarAdmin() {
   };
 
   const startEditing = (webinar: Webinar) => {
-    const date = webinar.starts_at ? new Date(webinar.starts_at) : null;
-    const localDate = date
-      ? new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-          .toISOString()
-          .slice(0, 16)
+    const localDate = webinar.starts_at
+      ? formatIndiaDateTimeLocal(webinar.starts_at)
       : "";
 
     setEditingId(webinar.id);
@@ -713,7 +714,7 @@ export function WebinarAdmin() {
             </label>
             <label className="space-y-2">
               <span className="text-xs uppercase tracking-wider text-white/45">
-                Date & time (optional)
+                Date & time in IST (optional)
               </span>
               <input
                 type="datetime-local"
@@ -864,7 +865,7 @@ export function WebinarAdmin() {
                     {webinar.starts_at && (
                       <span className="inline-flex items-center gap-1">
                         <CalendarDays size={12} />
-                        {new Date(webinar.starts_at).toLocaleDateString("en-IN")}
+                        {formatIndiaDateTime(webinar.starts_at)}
                       </span>
                     )}
                   </div>
