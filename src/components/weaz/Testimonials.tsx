@@ -41,7 +41,7 @@ const Testimonials = () => {
   const t = testimonials[i];
 
   return (
-    <section data-testid="testimonials-section" className="relative py-24 md:py-32 overflow-hidden">
+    <section data-testid="testimonials-section" className="relative pt-8 pb-12 md:pt-12 md:pb-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <FadeIn direction="up">
           <div className="grid lg:grid-cols-12 gap-10 items-end">

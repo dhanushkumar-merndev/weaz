@@ -51,6 +51,17 @@ function formatPrice(paise: number) {
   }).format(paise / 100);
 }
 
+const programAliases: Record<string, string> = {
+  "beginner students & freshers": "digital journey begins",
+  "beginner program": "digital journey begins",
+  "professional business owner": "one step to business",
+  "ai hero program": "ai hero",
+};
+
+function normalizeProgramName(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export function EnrollmentModal({
   open,
   onOpenChange,
@@ -76,9 +87,11 @@ export function EnrollmentModal({
       setLoadingPrograms(false);
 
       if (rawDefault && data) {
+        const normalizedDefault = normalizeProgramName(rawDefault);
+        const wantedName =
+          programAliases[normalizedDefault] || normalizedDefault;
         const match = data.find(
-          (p) =>
-            p.name.toLowerCase().includes(rawDefault.toLowerCase().split(" ")[0])
+          (p) => normalizeProgramName(p.name) === wantedName
         );
         if (match) setSelectedProgramId(String(match.id));
       }
@@ -97,6 +110,26 @@ export function EnrollmentModal({
     if (open) {
       loadRazorpayScript();
     }
+  }, [open]);
+
+  useEffect(() => {
+    document.body.dataset.enrollmentModalOpen = String(open);
+    window.dispatchEvent(
+      new CustomEvent("weaz-enrollment-modal-change", {
+        detail: { open },
+      })
+    );
+
+    return () => {
+      if (open) {
+        document.body.dataset.enrollmentModalOpen = "false";
+        window.dispatchEvent(
+          new CustomEvent("weaz-enrollment-modal-change", {
+            detail: { open: false },
+          })
+        );
+      }
+    };
   }, [open]);
 
   const selectedProgram = programs.find(
@@ -259,10 +292,8 @@ export function EnrollmentModal({
       onOpenChange={handleOpenChange}
       modal={step !== "paying"}
     >
-      <DialogContent className="max-w-lg bg-[#1A1525] border-white/10 text-white p-0 overflow-hidden">
-        <div className="relative p-6 md:p-8">
-          <div className="absolute -top-24 -right-24 w-56 h-56 rounded-full bg-[#9B59D0]/25 blur-[80px] pointer-events-none" />
-
+      <DialogContent className="!w-[calc(100%_-_1.5rem)] max-h-[calc(100dvh_-_1.5rem)] max-w-lg overflow-x-hidden overflow-y-auto rounded-2xl border-white/10 bg-[#171021] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 sm:rounded-2xl sm:p-3 [&>button]:right-3 [&>button]:top-3 [&>button]:z-20 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-black/45 [&>button]:text-white [&>button]:opacity-100 [&>button]:backdrop-blur-md [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white/30">
+        <div className="relative flex min-h-[320px] flex-col p-5 sm:p-6 md:p-8">
           {step === "success" || step === "processing" ? (
             <div className="flex flex-col items-center text-center py-8">
               <motion.div
@@ -351,10 +382,14 @@ export function EnrollmentModal({
               </DialogHeader>
 
               {!user ? (
-                <div className="mt-8 flex flex-col items-center py-6">
+                <div className="mt-auto flex flex-col items-center pb-1 pt-8">
+                  <p className="mb-5 max-w-sm text-center text-sm leading-6 text-white/50">
+                    Keep your enrollment, payment status, and program access
+                    securely linked to one account.
+                  </p>
                   <button
                     onClick={() => signInWithGoogle()}
-                    className="inline-flex items-center gap-3 px-8 py-3.5 rounded-xl bg-white hover:bg-white/90 text-[#0F0B14] font-bold transition-all cursor-pointer"
+                    className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0F0B14] shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021]"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -367,7 +402,7 @@ export function EnrollmentModal({
                 </div>
               ) : (
                 <div className="mt-6 space-y-4 relative z-10">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label className="text-xs uppercase tracking-widest text-white/60">
                         Full Name *

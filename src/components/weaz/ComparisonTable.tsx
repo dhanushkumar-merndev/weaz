@@ -13,6 +13,7 @@ interface ComparisonTableProps {
 const rows = [
   {
     id: "beginner",
+    programName: "Digital Journey Begins",
     name: "Beginner Program",
     features: [
       "Digital fundamentals",
@@ -28,6 +29,7 @@ const rows = [
   },
   {
     id: "professional",
+    programName: "One Step to Business",
     name: "Professional Business Owner",
     features: [
       "Advanced marketing (SEO/SEM)",
@@ -43,6 +45,7 @@ const rows = [
   },
   {
     id: "ai-hero",
+    programName: "AI Hero",
     name: "AI Hero Program",
     features: [
       "Machine learning",
@@ -60,7 +63,7 @@ const rows = [
 
 const ComparisonTable = ({ onEnroll }: ComparisonTableProps) => {
   return (
-    <section id="pricing" data-testid="pricing-section" className="relative py-24 md:py-32 overflow-hidden">
+    <section id="pricing" data-testid="pricing-section" className="relative pt-8 pb-24 md:pt-12 md:pb-32 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <FadeIn direction="up">
           <div className="max-w-3xl">
@@ -121,7 +124,7 @@ const ComparisonTable = ({ onEnroll }: ComparisonTableProps) => {
 
                 <ShineButton
                   data-testid={`pricing-enroll-${r.id}`}
-                  onClick={() => onEnroll(r.name)}
+                  onClick={() => onEnroll(r.programName)}
                   variant={r.popular ? "gold" : "purple"}
                   className="mt-8 w-full py-3.5 text-sm font-bold"
                 >

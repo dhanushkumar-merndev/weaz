@@ -20,7 +20,7 @@ const highlights = [
 
 const CareerOutcomes = () => {
   return (
-    <section id="outcomes" data-testid="outcomes-section" className="relative py-24 md:py-32 overflow-hidden">
+    <section id="outcomes" data-testid="outcomes-section" className="relative pt-8 pb-12 md:pt-12 md:pb-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-12 gap-12 items-start">
           <div className="lg:col-span-7">

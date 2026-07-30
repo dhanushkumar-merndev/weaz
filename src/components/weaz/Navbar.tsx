@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut, User, CreditCard, Calendar, Shield } from "lucide-react";
@@ -47,6 +53,10 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
   const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
   const [adminResult, setAdminResult] = useState<AdminResult | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const desktopNavRef = useRef<HTMLElement>(null);
+  const desktopLinkRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
+  const [indicatorMotion, setIndicatorMotion] = useState(false);
   const enrollment =
     user && profileResult?.userId === user.id
       ? profileResult.enrollment
@@ -72,6 +82,20 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [open]);
 
   const fetchProfile = useCallback(async () => {
     if (!user) return;
@@ -144,6 +168,67 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     onEnroll();
   };
 
+  const handleRouteChange = (targetHref: string) => {
+    const currentHref =
+      navItems.find((item) =>
+        item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+      )?.href ?? "/";
+
+    sessionStorage.setItem(
+      "weaz-nav-transition",
+      JSON.stringify({ from: currentHref, to: targetHref, at: Date.now() })
+    );
+    window.dispatchEvent(new Event("weaz-route-start"));
+  };
+
+  useLayoutEffect(() => {
+    const activeIndex = navItems.findIndex((item) =>
+      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+    );
+    const activeLink = desktopLinkRefs.current[activeIndex];
+    if (!activeLink) return;
+
+    const target = {
+      left: activeLink.offsetLeft,
+      width: activeLink.offsetWidth,
+      ready: true,
+    };
+    let navTransition: { from: string; to: string; at: number } | null = null;
+    try {
+      navTransition = JSON.parse(
+        sessionStorage.getItem("weaz-nav-transition") ?? "null"
+      );
+    } catch {
+      navTransition = null;
+    }
+    const hasFreshTransition =
+      navTransition?.to === navItems[activeIndex].href &&
+      Date.now() - navTransition.at < 5_000;
+    const previousIndex = hasFreshTransition
+      ? navItems.findIndex((item) => item.href === navTransition?.from)
+      : -1;
+    const previousLink = desktopLinkRefs.current[previousIndex];
+    let frame = 0;
+
+    if (previousLink && previousIndex !== activeIndex) {
+      setIndicatorMotion(false);
+      setIndicator({
+        left: previousLink.offsetLeft,
+        width: previousLink.offsetWidth,
+        ready: true,
+      });
+      frame = window.requestAnimationFrame(() => {
+        setIndicatorMotion(true);
+        setIndicator(target);
+      });
+    } else {
+      setIndicatorMotion(false);
+      setIndicator(target);
+    }
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
   return (
     <header
       data-testid="site-navbar"
@@ -155,6 +240,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link
           href="/"
+          onClick={() => handleRouteChange("/")}
           data-testid="nav-brand"
           className="font-display text-xl font-black tracking-tight text-white flex items-center gap-1 group"
         >
@@ -167,8 +253,8 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           </motion.span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
-          {navItems.map((item) => {
+        <nav ref={desktopNavRef} className="relative hidden md:flex items-center gap-8">
+          {navItems.map((item, index) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
@@ -176,7 +262,11 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
             return (
               <Link
                 key={item.href}
+                ref={(node) => {
+                  desktopLinkRefs.current[index] = node;
+                }}
                 href={item.href}
+                onClick={() => handleRouteChange(item.href)}
                 data-testid={`nav-link-${item.label.toLowerCase()}`}
                 className={`relative text-sm font-medium transition-colors py-1 ${
                   isActive
@@ -185,16 +275,24 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                 }`}
               >
                 {item.label}
-                {isActive && (
-                  <motion.div
-                    layoutId="activeNavIndicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FBBF24] rounded-full"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
               </Link>
             );
           })}
+          <motion.span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-0 h-0.5 rounded-full bg-[#FBBF24] shadow-[0_0_8px_rgba(251,191,36,0.45)]"
+            initial={false}
+            animate={{
+              x: indicator.left,
+              width: indicator.width,
+              opacity: indicator.ready ? 1 : 0,
+            }}
+            transition={
+              indicatorMotion
+                ? { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
+                : { duration: 0 }
+            }
+          />
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -319,32 +417,78 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="md:hidden glass-nav border-t border-white/5 overflow-hidden"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            style={{
+              height:
+                "calc(100dvh - var(--webinar-announcement-height, 0px) - 4rem)",
+            }}
+            className="absolute inset-x-0 top-full overflow-y-auto overscroll-contain border-t border-white/5 bg-[#100b18]/96 backdrop-blur-2xl md:hidden"
             data-testid="nav-mobile-menu"
+            data-lenis-prevent
           >
-            <div className="px-6 py-5 flex flex-col gap-3">
+            <div className="flex min-h-full flex-col gap-3 px-6 py-6">
               {user && (
-                <div className="flex items-center gap-3 pb-3 border-b border-white/10 mb-1">
-                  <div className="w-9 h-9 rounded-full overflow-hidden border border-[#9B59D0]/50 shrink-0">
-                    {user.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-[#9B59D0] grid place-items-center">
-                        <User size={14} className="text-white" />
+                <div className="pb-4 border-b border-white/10 mb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-[#9B59D0]/50 shrink-0">
+                      {user.user_metadata?.avatar_url ? (
+                        <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-[#9B59D0] grid place-items-center">
+                          <User size={14} className="text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate">
+                        {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
                       </div>
+                      <div className="text-xs text-white/50 truncate">{user.email}</div>
+                    </div>
+                    <span className="ml-auto shrink-0 rounded-full border border-[#9B59D0]/30 bg-[#9B59D0]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#c994f0]">
+                      {isAdmin ? "Admin" : "Student"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-white/30">
+                      Active enrollment
+                    </div>
+                    {enrollment ? (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2 text-sm text-white/85">
+                          <CreditCard size={13} className="shrink-0 text-[#FBBF24]" />
+                          <span className="truncate">{enrollment.programs?.name || "Enrolled"}</span>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2 text-xs text-white/45">
+                          <Calendar size={12} />
+                          <span>
+                            {enrollment.status === "paid"
+                              ? `Active${enrollment.programs?.duration ? ` · ${enrollment.programs.duration}` : ""}`
+                              : "Payment pending"}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 text-xs text-white/45">No active enrollment</div>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-white truncate">
-                      {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
-                    </div>
-                    <div className="text-xs text-white/50 truncate">{user.email}</div>
-                  </div>
                 </div>
+              )}
+
+              {user && isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  data-testid="nav-mobile-admin-link"
+                  className="flex items-center gap-2.5 rounded-xl border border-[#FBBF24]/20 bg-[#FBBF24]/5 px-3 py-2.5 text-sm font-semibold text-[#FBBF24]"
+                >
+                  <Shield size={15} />
+                  Admin Panel
+                </Link>
               )}
 
               {navItems.map((item, idx) => {
@@ -361,7 +505,10 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                   >
                     <Link
                       href={item.href}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        handleRouteChange(item.href);
+                        setOpen(false);
+                      }}
                       data-testid={`nav-mobile-link-${item.label.toLowerCase()}`}
                       className={`block py-2 text-base ${
                         isActive ? "text-[#FBBF24] font-bold" : "text-white/80 hover:text-white"

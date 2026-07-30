@@ -12,6 +12,7 @@ interface ProgramDeepDivesProps {
 
 interface Program {
   id: string;
+  programName: string;
   tag: string;
   title: string;
   subtitle: string;
@@ -25,6 +26,7 @@ interface Program {
 const programs: Program[] = [
   {
     id: "beginner",
+    programName: "Digital Journey Begins",
     tag: "6-Month Curriculum",
     title: "Beginner Students & Freshers",
     subtitle: "Digital Journey Begins",
@@ -49,6 +51,7 @@ const programs: Program[] = [
   },
   {
     id: "professional",
+    programName: "One Step to Business",
     tag: "For Founders & Owners",
     title: "Professional Business Owner",
     subtitle: "One Step to Business",
@@ -73,6 +76,7 @@ const programs: Program[] = [
   },
   {
     id: "ai-hero",
+    programName: "AI Hero",
     tag: "3-Month Intensive",
     title: "AI Hero",
     subtitle: "Build. Automate. Scale.",
@@ -109,7 +113,7 @@ const DeepDive = ({
     <div
       id={`program-${p.id}`}
       data-testid={`program-deepdive-${p.id}`}
-      className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center py-16 md:py-24"
+      className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center py-16 last:pb-8 md:py-24 md:last:pb-12"
     >
       <div className={`lg:col-span-6 ${flipped ? "lg:order-2" : ""}`}>
         <FadeIn direction={flipped ? "left" : "right"}>
@@ -203,7 +207,7 @@ const DeepDive = ({
           <div className="mt-10">
             <ShineButton
               data-testid={`program-${p.id}-enroll-btn`}
-              onClick={() => onEnroll(p.title)}
+              onClick={() => onEnroll(p.programName)}
               variant="gold"
               className="px-7 py-3.5"
             >
@@ -218,7 +222,7 @@ const DeepDive = ({
 
 const ProgramDeepDives = ({ onEnroll }: ProgramDeepDivesProps) => {
   return (
-    <section data-testid="program-deepdives-section" className="relative py-16 md:py-24 overflow-hidden">
+    <section data-testid="program-deepdives-section" className="relative pt-8 pb-10 md:pt-12 md:pb-15 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <FadeIn direction="up">
           <div className="max-w-3xl">
