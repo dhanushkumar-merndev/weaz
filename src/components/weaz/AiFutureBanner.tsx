@@ -112,6 +112,7 @@ export function AiFutureBanner() {
 
   return (
     <section
+      id="ai-future"
       data-testid="ai-future-section"
       className="relative isolate overflow-hidden border-y border-white/[0.06] py-24 sm:py-28 md:py-36"
     >

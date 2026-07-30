@@ -2,13 +2,16 @@
 /* Dynamic Supabase URLs and local blob previews are already WebP-optimized on save. */
 /* eslint-disable @next/next/no-img-element */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
   Download,
-  Eye,
-  EyeOff,
   ImagePlus,
   Loader2,
   Pencil,
@@ -37,6 +40,8 @@ interface Webinar {
   deleted_at: string | null;
   created_at: string;
   whatsapp_group_url: string | null;
+  registration_total: number;
+  paid_registration_count: number;
 }
 
 interface Registration {
@@ -53,6 +58,10 @@ interface Registration {
 interface WebinarResponse {
   webinars: Webinar[];
   registrations: Registration[];
+  registration_page: number;
+  registration_limit: number;
+  registration_total: number;
+  registration_total_pages: number;
 }
 
 function formatPrice(paise: number) {
@@ -122,11 +131,16 @@ export function WebinarAdmin() {
   const queryClient = useQueryClient();
   const imageRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
+  const registrationTableRef = useRef<HTMLDivElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [registrationWebinarId, setRegistrationWebinarId] = useState("all");
+  const [registrationPage, setRegistrationPage] = useState(1);
+  const registrationLimit = 50;
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -141,9 +155,19 @@ export function WebinarAdmin() {
 
   const { data, isLoading, isError, error, isFetching, refetch } =
     useQuery<WebinarResponse>({
-    queryKey: ["admin-webinars"],
+    queryKey: [
+      "admin-webinars",
+      registrationPage,
+      registrationLimit,
+      registrationWebinarId,
+    ],
     queryFn: async () => {
-      const response = await fetch("/api/admin/webinars", {
+      const params = new URLSearchParams({
+        registration_page: String(registrationPage),
+        registration_limit: String(registrationLimit),
+        registration_webinar_id: registrationWebinarId,
+      });
+      const response = await fetch(`/api/admin/webinars?${params}`, {
         cache: "no-store",
         signal: AbortSignal.timeout(15_000),
       });
@@ -161,6 +185,7 @@ export function WebinarAdmin() {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    placeholderData: (previous) => previous,
     retry: 2,
     retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 4_000),
     refetchOnWindowFocus: false,
@@ -168,8 +193,23 @@ export function WebinarAdmin() {
 
   const refreshWebinarData = async () => {
     queryClient.removeQueries({ queryKey: ["active-webinar"] });
-    await refetch();
+    await queryClient.invalidateQueries({ queryKey: ["admin-webinars"] });
   };
+
+  const registrations = data?.registrations ?? [];
+  // TanStack Virtual intentionally returns imperative measurement functions.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const registrationVirtualizer = useVirtualizer({
+    count: registrations.length,
+    getScrollElement: () => registrationTableRef.current,
+    estimateSize: () => 65,
+    overscan: 8,
+    getItemKey: (index) => registrations[index]?.id ?? index,
+  });
+
+  useEffect(() => {
+    registrationTableRef.current?.scrollTo({ top: 0 });
+  }, [registrationPage, registrationWebinarId]);
 
   const resetForm = () => {
     setForm({
@@ -185,14 +225,28 @@ export function WebinarAdmin() {
     setIsDragging(false);
     dragDepth.current = 0;
     setEditingId(null);
+    setCopySourceId(null);
     if (imageRef.current) imageRef.current.value = "";
   };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const image = selectedImage;
-    if (!image && !editingId) {
+    if (!image && !editingId && !copySourceId) {
       toast.error("Choose a webinar poster");
+      return;
+    }
+
+    const currentActive = data?.webinars.find(
+      (webinar) => webinar.is_visible && !webinar.deleted_at
+    );
+    if (
+      !editingId &&
+      currentActive &&
+      !window.confirm(
+        `Publish this webinar now? "${currentActive.title}" will become completed and hidden, while all of its registrations remain preserved.`
+      )
+    ) {
       return;
     }
 
@@ -201,6 +255,7 @@ export function WebinarAdmin() {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       if (editingId) body.append("id", editingId);
+      if (copySourceId) body.append("copy_source_id", copySourceId);
       if (image) {
         const webpImage = await convertImageToWebp(image);
         body.append("image", webpImage, webpImage.name);
@@ -216,7 +271,9 @@ export function WebinarAdmin() {
           ? image
             ? "Webinar updated and new poster converted to WebP"
             : "Webinar updated"
-          : "Webinar added and poster converted to WebP in your browser"
+          : copySourceId
+            ? "Copied webinar published as a new active webinar"
+            : "Webinar published and the previous webinar was completed"
       );
       resetForm();
       setShowForm(false);
@@ -253,6 +310,7 @@ export function WebinarAdmin() {
       : "";
 
     setEditingId(webinar.id);
+    setCopySourceId(null);
     setForm({
       title: webinar.title,
       announcement_text: webinar.announcement_text,
@@ -268,7 +326,34 @@ export function WebinarAdmin() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const toggleVisibility = async (webinar: Webinar) => {
+  const startCopying = (webinar: Webinar) => {
+    setEditingId(null);
+    setCopySourceId(webinar.id);
+    setForm({
+      title: webinar.title,
+      announcement_text: webinar.announcement_text,
+      description: webinar.description,
+      price_rupees: String(webinar.price_paise / 100),
+      starts_at: "",
+      whatsapp_group_url: "",
+    });
+    setPreview(webinar.image_url);
+    setSelectedImage(null);
+    if (imageRef.current) imageRef.current.value = "";
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast.info("Add the new date and WhatsApp link, then publish the copy");
+  };
+
+  const markCompleted = async (webinar: Webinar) => {
+    if (
+      !window.confirm(
+        `Mark "${webinar.title}" as completed? It will stop showing on the public website, and all registrations will be preserved.`
+      )
+    ) {
+      return;
+    }
+
     setBusyId(webinar.id);
     try {
       const response = await fetch("/api/admin/webinars", {
@@ -276,16 +361,12 @@ export function WebinarAdmin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: webinar.id,
-          is_visible: !webinar.is_visible,
+          is_visible: false,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not update webinar");
-      toast.success(
-        webinar.is_visible
-          ? "Webinar hidden"
-          : "Webinar published; any previous active webinar was hidden"
-      );
+      toast.success("Webinar completed and hidden from the public website");
       await refreshWebinarData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Update failed");
@@ -297,7 +378,7 @@ export function WebinarAdmin() {
   const remove = async (webinar: Webinar) => {
     if (
       !window.confirm(
-        `Delete "${webinar.title}"? It will be removed from the public site, but its registrations and payment records will remain available in the webinar filter.`
+        `Remove "${webinar.title}"? It will be hidden from the admin webinar list and public site, but its registrations and payment records will remain available in the webinar filter.`
       )
     ) {
       return;
@@ -311,7 +392,7 @@ export function WebinarAdmin() {
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not remove webinar");
-      toast.success("Webinar deleted; registrations were preserved");
+      toast.success("Webinar removed; registrations were preserved");
       await refreshWebinarData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Remove failed");
@@ -353,26 +434,46 @@ export function WebinarAdmin() {
     );
   }
 
-  const registrations = data?.registrations ?? [];
   const webinars = data?.webinars ?? [];
-  const activeWebinars = webinars.filter((webinar) => !webinar.deleted_at);
-  const filteredRegistrations =
-    registrationWebinarId === "all"
-      ? registrations
-      : registrations.filter(
-          (registration) => registration.webinar_id === registrationWebinarId
-        );
+  const listedWebinars = webinars.filter((webinar) => !webinar.deleted_at);
+  const virtualRows = registrationVirtualizer.getVirtualItems();
+  const virtualPaddingTop =
+    virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const virtualPaddingBottom =
+    virtualRows.length > 0
+      ? registrationVirtualizer.getTotalSize() -
+        virtualRows[virtualRows.length - 1].end
+      : 0;
 
-  const exportRegistrations = () => {
-    if (filteredRegistrations.length === 0) {
+  const exportRegistrations = async () => {
+    if (!data?.registration_total) {
       toast.error("There are no registrations to export for this filter");
       return;
     }
 
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        registration_export: "1",
+        registration_webinar_id: registrationWebinarId,
+      });
+      const response = await fetch(`/api/admin/webinars?${params}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(30_000),
+      });
+      const result = (await response.json()) as {
+        registrations?: Registration[];
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(result.error || "Could not export registrations");
+      }
+      const exportRows = result.registrations ?? [];
+
     const columns = [
       "Registration ID",
       "Webinar",
-      "Webinar deleted",
+      "Webinar removed",
       "Attendee name",
       "Email",
       "Phone",
@@ -382,7 +483,7 @@ export function WebinarAdmin() {
       "Registered at",
       "Paid at",
     ];
-    const rows = filteredRegistrations.map((registration) => {
+    const rows = exportRows.map((registration) => {
       const webinar = webinars.find(
         (item) => item.id === registration.webinar_id
       );
@@ -455,7 +556,14 @@ export function WebinarAdmin() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredRegistrations.length} registrations`);
+      toast.success(`Exported ${exportRows.length} registrations`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not export registrations"
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -499,6 +607,13 @@ export function WebinarAdmin() {
           onSubmit={submit}
           className="grid gap-6 rounded-2xl border border-white/[0.08] bg-[#15111D]/70 p-5 lg:grid-cols-[1fr_280px]"
         >
+          {copySourceId && (
+            <div className="rounded-xl border border-[#9B59D0]/20 bg-[#9B59D0]/10 px-4 py-3 text-sm text-white/70 lg:col-span-2">
+              This is a new webinar copied from a completed one. Add its new
+              date and WhatsApp group link; publishing creates a new ID with
+              zero registrations.
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2 sm:col-span-2">
               <span className="text-xs uppercase tracking-wider text-white/45">
@@ -623,6 +738,8 @@ export function WebinarAdmin() {
                   ? "Converting & saving..."
                   : editingId
                     ? "Save changes"
+                    : copySourceId
+                      ? "Publish copied webinar"
                     : "Publish webinar"}
               </button>
               <button
@@ -678,7 +795,7 @@ export function WebinarAdmin() {
               <>
                 <img src={preview} alt="Poster preview" className="h-full w-full object-cover" />
                 <div className="absolute inset-x-3 bottom-3 rounded-lg bg-black/75 px-3 py-2 text-center text-xs text-white backdrop-blur">
-                  Click to {editingId ? "replace" : "change"} poster
+                  Click to {editingId || copySourceId ? "replace" : "change"} poster
                 </div>
               </>
             ) : (
@@ -701,13 +818,7 @@ export function WebinarAdmin() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {activeWebinars.map((webinar) => {
-          const webinarRegistrations = registrations.filter(
-            (registration) => registration.webinar_id === webinar.id
-          );
-          const paidCount = webinarRegistrations.filter(
-            (registration) => registration.status === "paid"
-          ).length;
+        {listedWebinars.map((webinar) => {
           return (
             <article
               key={webinar.id}
@@ -730,7 +841,9 @@ export function WebinarAdmin() {
                           : "bg-white/5 text-white/35"
                       }`}
                     >
-                      {webinar.is_visible ? "Visible" : "Hidden"}
+                      {webinar.is_visible
+                        ? "Active / Showing"
+                        : "Completed / Hidden"}
                     </span>
                   </div>
                   <h3 className="truncate font-display text-lg font-bold text-white">
@@ -745,7 +858,8 @@ export function WebinarAdmin() {
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <Users size={12} />
-                      {paidCount} paid / {webinarRegistrations.length} total
+                      {webinar.paid_registration_count} paid /{" "}
+                      {webinar.registration_total} total
                     </span>
                     {webinar.starts_at && (
                       <span className="inline-flex items-center gap-1">
@@ -757,24 +871,38 @@ export function WebinarAdmin() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 border-t border-white/[0.05] p-3">
-                <button
-                  type="button"
-                  disabled={busyId === webinar.id}
-                  onClick={() => startEditing(webinar)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/60 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
-                >
-                  <Pencil size={14} />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  disabled={busyId === webinar.id}
-                  onClick={() => toggleVisibility(webinar)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/60 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
-                >
-                  {webinar.is_visible ? <EyeOff size={14} /> : <Eye size={14} />}
-                  {webinar.is_visible ? "Hide" : "Show"}
-                </button>
+                {webinar.is_visible ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={busyId === webinar.id}
+                      onClick={() => startEditing(webinar)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/60 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+                    >
+                      <Pencil size={14} />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === webinar.id}
+                      onClick={() => markCompleted(webinar)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/60 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+                    >
+                      <CheckCircle2 size={14} />
+                      Mark completed
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busyId === webinar.id}
+                    onClick={() => startCopying(webinar)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/60 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+                  >
+                    <Copy size={14} />
+                    Copy as new
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busyId === webinar.id}
@@ -790,7 +918,7 @@ export function WebinarAdmin() {
         })}
       </div>
 
-      {activeWebinars.length === 0 && (
+      {listedWebinars.length === 0 && (
         <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center text-sm text-white/35">
           No webinars yet. The public site remains exactly as it is now.
         </div>
@@ -803,13 +931,17 @@ export function WebinarAdmin() {
               Webinar registrations
             </h3>
             <span className="text-xs text-white/35">
-              {filteredRegistrations.length} shown / {registrations.length} total
+              {registrations.length} on this page /{" "}
+              {data?.registration_total ?? 0} total
             </span>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select
               value={registrationWebinarId}
-              onValueChange={setRegistrationWebinarId}
+              onValueChange={(value) => {
+                setRegistrationWebinarId(value);
+                setRegistrationPage(1);
+              }}
             >
               <SelectTrigger
                 aria-label="Filter registrations by webinar"
@@ -834,25 +966,32 @@ export function WebinarAdmin() {
                     className="focus:bg-white/10 focus:text-white"
                   >
                     {webinar.title}
-                    {webinar.deleted_at ? " (Deleted)" : ""}
+                    {webinar.deleted_at ? " (Removed)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <button
               type="button"
-              disabled={filteredRegistrations.length === 0}
-              onClick={exportRegistrations}
+              disabled={!data?.registration_total || exporting}
+              onClick={() => void exportRegistrations()}
               className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 text-sm font-bold text-[#08130d] transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Download size={16} />
-              Export Excel
+              {exporting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              {exporting ? "Exporting..." : "Export Excel"}
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-black/10 text-[11px] uppercase tracking-wider text-white/30">
+        <div
+          ref={registrationTableRef}
+          className="max-h-[520px] overflow-auto"
+        >
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-[#15111D] text-[11px] uppercase tracking-wider text-white/30">
               <tr>
                 <th className="px-4 py-3 font-medium">Attendee</th>
                 <th className="px-4 py-3 font-medium">Webinar</th>
@@ -862,8 +1001,20 @@ export function WebinarAdmin() {
               </tr>
             </thead>
             <tbody>
-              {filteredRegistrations.map((registration) => (
-                <tr key={registration.id} className="border-t border-white/[0.04]">
+              {virtualPaddingTop > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={5} style={{ height: virtualPaddingTop }} />
+                </tr>
+              )}
+              {virtualRows.map((virtualRow) => {
+                const registration = registrations[virtualRow.index];
+                return (
+                <tr
+                  key={registration.id}
+                  ref={registrationVirtualizer.measureElement}
+                  data-index={virtualRow.index}
+                  className="border-t border-white/[0.04]"
+                >
                   <td className="px-4 py-3">
                     <div className="text-white/80">
                       {registration.form_data?.name || "—"}
@@ -880,7 +1031,7 @@ export function WebinarAdmin() {
                       (webinar) => webinar.id === registration.webinar_id
                     )?.deleted_at && (
                       <span className="ml-2 rounded bg-red-400/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-red-300/70">
-                        Deleted
+                        Removed
                       </span>
                     )}
                   </td>
@@ -902,15 +1053,57 @@ export function WebinarAdmin() {
                     {new Date(registration.created_at).toLocaleDateString("en-IN")}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
+              {virtualPaddingBottom > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={5} style={{ height: virtualPaddingBottom }} />
+                </tr>
+              )}
             </tbody>
           </table>
-          {filteredRegistrations.length === 0 && (
+          {registrations.length === 0 && (
             <div className="py-12 text-center text-sm text-white/30">
               No webinar registrations for this filter.
             </div>
           )}
         </div>
+        {(data?.registration_total_pages ?? 0) > 1 && (
+          <div className="flex items-center justify-between border-t border-white/[0.06] px-4 py-3 text-sm">
+            <span className="text-white/40">
+              Page {registrationPage} of {data?.registration_total_pages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setRegistrationPage((page) => Math.max(1, page - 1))
+                }
+                disabled={registrationPage <= 1 || isFetching}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/60 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronLeft size={14} />
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setRegistrationPage((page) =>
+                    Math.min(data?.registration_total_pages ?? page, page + 1)
+                  )
+                }
+                disabled={
+                  registrationPage >= (data?.registration_total_pages ?? 0) ||
+                  isFetching
+                }
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/60 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Next
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

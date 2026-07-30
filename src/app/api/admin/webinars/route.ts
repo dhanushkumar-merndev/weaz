@@ -3,12 +3,17 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getAdminFromRequest } from "@/lib/admin-auth";
 import { ACTIVE_WEBINAR_CACHE_TAG } from "@/lib/webinar-cache";
-import { isTrustedBrowserRequest } from "@/lib/payment-security";
+import {
+  isEnrollmentId,
+  isTrustedBrowserRequest,
+} from "@/lib/payment-security";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 
 const BUCKET = "webinar-posters";
+const REGISTRATION_SELECT =
+  "id, webinar_id, status, amount_paise, form_data, paid_at, created_at, razorpay_payment_id";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -19,6 +24,59 @@ function errorResponse(message: string, status: number) {
 
 function invalidateActiveWebinarCache() {
   revalidateTag(ACTIVE_WEBINAR_CACHE_TAG, { expire: 0 });
+}
+
+async function loadRegistrationCounts(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  webinarIds: string[]
+) {
+  const { data, error } = await supabase.rpc(
+    "get_webinar_registration_counts",
+    {}
+  );
+  if (!error) {
+    return new Map(
+      (data ?? []).map((row) => [
+        row.webinar_id,
+        {
+          total: Number(row.total_count),
+          paid: Number(row.paid_count),
+        },
+      ])
+    );
+  }
+
+  // Keep the admin usable while the aggregate-count migration is rolling out.
+  console.warn(
+    "Falling back to individual webinar registration counts; apply the latest Supabase migration",
+    error.message
+  );
+  const countRows = await Promise.all(
+    webinarIds.map(async (webinarId) => {
+      const [totalResult, paidResult] = await Promise.all([
+        supabase
+          .from("webinar_registrations")
+          .select("id", { count: "exact", head: true })
+          .eq("webinar_id", webinarId),
+        supabase
+          .from("webinar_registrations")
+          .select("id", { count: "exact", head: true })
+          .eq("webinar_id", webinarId)
+          .eq("status", "paid"),
+      ]);
+      if (totalResult.error || paidResult.error) {
+        throw totalResult.error ?? paidResult.error;
+      }
+      return [
+        webinarId,
+        {
+          total: totalResult.count ?? 0,
+          paid: paidResult.count ?? 0,
+        },
+      ] as const;
+    })
+  );
+  return new Map(countRows);
 }
 
 async function activateWebinar(
@@ -108,43 +166,130 @@ export async function GET(request: Request) {
     return errorResponse("Forbidden", 403);
   }
 
+  const searchParams = new URL(request.url).searchParams;
+  const registrationWebinarId = searchParams.get("registration_webinar_id");
+  if (
+    registrationWebinarId &&
+    registrationWebinarId !== "all" &&
+    !isEnrollmentId(registrationWebinarId)
+  ) {
+    return errorResponse("Invalid webinar filter", 400);
+  }
+
   const supabase = getSupabaseAdmin();
+  const filterId =
+    registrationWebinarId && registrationWebinarId !== "all"
+      ? registrationWebinarId
+      : null;
+
+  if (searchParams.get("registration_export") === "1") {
+    const registrations = [];
+    const batchSize = 1_000;
+    for (let offset = 0; ; offset += batchSize) {
+      let query = supabase
+        .from("webinar_registrations")
+        .select(REGISTRATION_SELECT)
+        .order("created_at", { ascending: false });
+      if (filterId) query = query.eq("webinar_id", filterId);
+      const { data, error } = await query.range(
+        offset,
+        offset + batchSize - 1
+      );
+      if (error) {
+        console.error("Webinar registration export failed", error.message);
+        return errorResponse("Could not export registrations", 503);
+      }
+      registrations.push(...(data ?? []));
+      if (!data || data.length < batchSize) break;
+    }
+    return NextResponse.json(
+      { registrations },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const registrationPage = Math.max(
+    1,
+    Number.parseInt(searchParams.get("registration_page") ?? "1", 10) || 1
+  );
+  const registrationLimit = Math.min(
+    100,
+    Math.max(
+      1,
+      Number.parseInt(searchParams.get("registration_limit") ?? "50", 10) ||
+        50
+    )
+  );
+  const registrationOffset = (registrationPage - 1) * registrationLimit;
   const signal = AbortSignal.timeout(12_000);
+  const webinarsResult = await supabase
+    .from("webinars")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .abortSignal(signal);
+  const { data: webinars, error } = webinarsResult;
+  if (error) {
+    console.error("Admin webinar loading failed", error.message);
+    return errorResponse("Could not load webinars. Please retry.", 503);
+  }
+
+  let registrationsQuery = supabase
+    .from("webinar_registrations")
+    .select(REGISTRATION_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false });
+  if (filterId) {
+    registrationsQuery = registrationsQuery.eq("webinar_id", filterId);
+  }
+
   const [
-    { data: webinars, error },
-    { data: registrations, error: registrationsError },
+    {
+      data: registrations,
+      error: registrationsError,
+      count: registrationTotal,
+    },
+    registrationCounts,
   ] = await Promise.all([
-    supabase
-      .from("webinars")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .abortSignal(signal),
-    supabase
-      .from("webinar_registrations")
-      .select(
-        "id, webinar_id, status, amount_paise, form_data, paid_at, created_at, razorpay_payment_id"
+    registrationsQuery
+      .range(
+        registrationOffset,
+        registrationOffset + registrationLimit - 1
       )
-      .order("created_at", { ascending: false })
       .abortSignal(signal),
+    loadRegistrationCounts(
+      supabase,
+      (webinars ?? []).map((webinar) => webinar.id)
+    ),
   ]);
 
-  if (error || registrationsError) {
+  if (registrationsError) {
     console.error(
       "Admin webinar loading failed",
-      error?.message ?? registrationsError?.message
+      registrationsError.message
     );
     return errorResponse("Could not load webinars. Please retry.", 503);
   }
 
   const withUrls = (webinars ?? []).map((webinar) => ({
     ...webinar,
+    registration_total: registrationCounts.get(webinar.id)?.total ?? 0,
+    paid_registration_count: registrationCounts.get(webinar.id)?.paid ?? 0,
     image_url: supabase.storage
       .from(BUCKET)
       .getPublicUrl(webinar.image_path).data.publicUrl,
   }));
+  const total = registrationTotal ?? 0;
 
   return NextResponse.json(
-    { webinars: withUrls, registrations: registrations ?? [] },
+    {
+      webinars: withUrls,
+      registrations: registrations ?? [],
+      registration_page: registrationPage,
+      registration_limit: registrationLimit,
+      registration_total: total,
+      registration_total_pages: total
+        ? Math.ceil(total / registrationLimit)
+        : 0,
+    },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
@@ -176,6 +321,7 @@ export async function POST(request: Request) {
   const priceRupees = Number(formData.get("price_rupees"));
   const startsAtValue = formData.get("starts_at");
   const source = formData.get("image");
+  const copySourceId = formData.get("copy_source_id");
 
   if (!title || !announcementText || !description || !whatsappGroupUrl) {
     return errorResponse(
@@ -186,7 +332,10 @@ export async function POST(request: Request) {
   if (!Number.isFinite(priceRupees) || priceRupees <= 0 || priceRupees > 10_000_000) {
     return errorResponse("Enter a valid webinar price", 400);
   }
-  if (!(source instanceof File)) {
+  const hasUploadedPoster = source instanceof File && source.size > 0;
+  const hasCopySource =
+    typeof copySourceId === "string" && isEnrollmentId(copySourceId);
+  if (!hasUploadedPoster && !hasCopySource) {
     return errorResponse("Choose a valid poster image", 400);
   }
 
@@ -199,25 +348,44 @@ export async function POST(request: Request) {
     startsAt = date.toISOString();
   }
 
-  let webp: Buffer;
-  try {
-    webp = await readVerifiedWebp(source);
-  } catch (error) {
-    return errorResponse(
-      error instanceof Error ? error.message : "Invalid WebP poster",
-      400
-    );
-  }
-
   const supabase = getSupabaseAdmin();
   const imagePath = `${new Date().getUTCFullYear()}/${randomUUID()}.webp`;
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(imagePath, webp, {
-      contentType: "image/webp",
-      cacheControl: "31536000",
-      upsert: false,
-    });
+  let uploadError: { message: string } | null = null;
+
+  if (hasUploadedPoster) {
+    let webp: Buffer;
+    try {
+      webp = await readVerifiedWebp(source);
+    } catch (error) {
+      return errorResponse(
+        error instanceof Error ? error.message : "Invalid WebP poster",
+        400
+      );
+    }
+    const uploadResult = await supabase.storage
+      .from(BUCKET)
+      .upload(imagePath, webp, {
+        contentType: "image/webp",
+        cacheControl: "31536000",
+        upsert: false,
+      });
+    uploadError = uploadResult.error;
+  } else {
+    const { data: copySource } = await supabase
+      .from("webinars")
+      .select("image_path")
+      .eq("id", copySourceId as string)
+      .eq("is_visible", false)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!copySource) {
+      return errorResponse("Completed webinar copy source not found", 404);
+    }
+    const copyResult = await supabase.storage
+      .from(BUCKET)
+      .copy(copySource.image_path, imagePath);
+    uploadError = copyResult.error;
+  }
 
   if (uploadError) {
     console.error("Webinar poster upload failed", uploadError.message);
@@ -288,24 +456,17 @@ export async function PATCH(request: Request) {
 
   const supabase = getSupabaseAdmin();
   if (body.is_visible) {
-    const error = await activateWebinar(supabase, body.id);
-    if (error) return errorResponse("Webinar not found", 404);
-
-    const { data } = await supabase
-      .from("webinars")
-      .select()
-      .eq("id", body.id)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!data) return errorResponse("Webinar not found", 404);
-    invalidateActiveWebinarCache();
-    return NextResponse.json({ webinar: data });
+    return errorResponse(
+      "Completed webinars must be copied as a new webinar",
+      409
+    );
   }
 
   const { data, error } = await supabase
     .from("webinars")
     .update({ is_visible: false, updated_at: new Date().toISOString() })
     .eq("id", body.id)
+    .eq("is_visible", true)
     .is("deleted_at", null)
     .select()
     .maybeSingle();
@@ -378,6 +539,7 @@ export async function PUT(request: Request) {
     .from("webinars")
     .select("image_path")
     .eq("id", id)
+    .eq("is_visible", true)
     .is("deleted_at", null)
     .maybeSingle();
   if (!existing) return errorResponse("Webinar not found", 404);
@@ -421,6 +583,7 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .eq("is_visible", true)
     .is("deleted_at", null)
     .select()
     .single();

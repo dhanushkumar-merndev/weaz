@@ -240,6 +240,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_webinar_registration_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          paid_count: number
+          total_count: number
+          webinar_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
