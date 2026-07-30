@@ -40,7 +40,7 @@ export default function Home() {
         style={{ width: 420, height: 420, top: 900, right: -160 }}
       />
       <div
-        className="blob blob-gold"
+        className="blob blob-gold hidden md:block"
         style={{ width: 380, height: 380, top: 1700, left: -100 }}
       />
       <div
