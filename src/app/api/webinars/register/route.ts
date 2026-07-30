@@ -59,9 +59,10 @@ export async function POST(request: Request) {
   const supabase = getSupabaseAdmin();
   const { data: webinar, error: webinarError } = await supabase
     .from("webinars")
-    .select("id")
+    .select("id, price_paise")
     .eq("id", webinarId)
     .eq("is_visible", true)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (webinarError) return errorResponse("Could not load the webinar", 500);
@@ -87,20 +88,31 @@ export async function POST(request: Request) {
 
   const { data: pending, error: pendingError } = await supabase
     .from("webinar_registrations")
-    .select("id")
+    .select("id, amount_paise, razorpay_order_id")
     .eq("user_id", user.id)
     .eq("webinar_id", webinar.id)
     .eq("status", "pending")
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(100);
 
   if (pendingError) return errorResponse("Could not prepare registration", 500);
 
-  if (pending?.[0]) {
+  const reusablePending = pending?.find(
+    (registration) =>
+      registration.amount_paise === webinar.price_paise ||
+      (registration.amount_paise === null &&
+        registration.razorpay_order_id === null)
+  );
+
+  if (reusablePending) {
     const { data, error } = await supabase
       .from("webinar_registrations")
-      .update({ form_data: formData, updated_at: new Date().toISOString() })
-      .eq("id", pending[0].id)
+      .update({
+        amount_paise: webinar.price_paise,
+        form_data: formData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", reusablePending.id)
       .eq("user_id", user.id)
       .eq("status", "pending")
       .select()
@@ -116,6 +128,7 @@ export async function POST(request: Request) {
       user_id: user.id,
       webinar_id: webinar.id,
       status: "pending",
+      amount_paise: webinar.price_paise,
       form_data: formData,
     })
     .select()

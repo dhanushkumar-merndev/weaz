@@ -45,6 +45,7 @@ async function activateWebinar(
     .from("webinars")
     .update({ is_visible: false, updated_at: new Date().toISOString() })
     .eq("is_visible", true)
+    .is("deleted_at", null)
     .neq("id", webinarId);
   if (hideError) return hideError;
 
@@ -52,6 +53,7 @@ async function activateWebinar(
     .from("webinars")
     .update({ is_visible: true, updated_at: new Date().toISOString() })
     .eq("id", webinarId)
+    .is("deleted_at", null)
     .select("id")
     .maybeSingle();
 
@@ -120,7 +122,7 @@ export async function GET(request: Request) {
     supabase
       .from("webinar_registrations")
       .select(
-        "id, webinar_id, status, form_data, paid_at, created_at, razorpay_payment_id"
+        "id, webinar_id, status, amount_paise, form_data, paid_at, created_at, razorpay_payment_id"
       )
       .order("created_at", { ascending: false })
       .abortSignal(signal),
@@ -293,6 +295,7 @@ export async function PATCH(request: Request) {
       .from("webinars")
       .select()
       .eq("id", body.id)
+      .is("deleted_at", null)
       .maybeSingle();
     if (!data) return errorResponse("Webinar not found", 404);
     invalidateActiveWebinarCache();
@@ -303,6 +306,7 @@ export async function PATCH(request: Request) {
     .from("webinars")
     .update({ is_visible: false, updated_at: new Date().toISOString() })
     .eq("id", body.id)
+    .is("deleted_at", null)
     .select()
     .maybeSingle();
   if (error || !data) return errorResponse("Webinar not found", 404);
@@ -374,6 +378,7 @@ export async function PUT(request: Request) {
     .from("webinars")
     .select("image_path")
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle();
   if (!existing) return errorResponse("Webinar not found", 404);
 
@@ -416,6 +421,7 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .is("deleted_at", null)
     .select()
     .single();
 
@@ -451,35 +457,21 @@ export async function DELETE(request: Request) {
   if (!id) return errorResponse("Missing webinar id", 400);
 
   const supabase = getSupabaseAdmin();
-  const { count } = await supabase
-    .from("webinar_registrations")
-    .select("id", { count: "exact", head: true })
-    .eq("webinar_id", id);
-
-  if ((count ?? 0) > 0) {
-    return errorResponse(
-      "This webinar has registrations. Hide it to preserve payment records.",
-      409
-    );
-  }
-
-  const { data: webinar } = await supabase
+  const deletedAt = new Date().toISOString();
+  const { data: webinar, error } = await supabase
     .from("webinars")
-    .select("image_path")
+    .update({
+      is_visible: false,
+      deleted_at: deletedAt,
+      updated_at: deletedAt,
+    })
     .eq("id", id)
+    .is("deleted_at", null)
+    .select("id")
     .maybeSingle();
+  if (error) return errorResponse("Could not remove the webinar", 500);
   if (!webinar) return errorResponse("Webinar not found", 404);
 
-  const { error } = await supabase.from("webinars").delete().eq("id", id);
-  if (error) return errorResponse("Could not remove the webinar", 500);
-
-  const { error: imageError } = await supabase.storage
-    .from(BUCKET)
-    .remove([webinar.image_path]);
-  if (imageError) {
-    console.error("Deleted webinar poster cleanup failed", imageError.message);
-  }
-
   invalidateActiveWebinarCache();
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, deleted_at: deletedAt });
 }

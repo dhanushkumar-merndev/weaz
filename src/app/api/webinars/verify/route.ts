@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const { data: registration, error } = await supabase
       .from("webinar_registrations")
       .select(
-        "id, status, razorpay_order_id, razorpay_payment_id, webinars!inner(price_paise)"
+        "id, status, amount_paise, razorpay_order_id, razorpay_payment_id"
       )
       .eq("razorpay_order_id", orderId)
       .eq("user_id", user.id)
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       razorpay.orders.fetch(storedOrderId),
     ]);
     const expectedAmount = asPositiveInteger(
-      (registration.webinars as { price_paise: number }).price_paise
+      registration.amount_paise ?? order.amount
     );
 
     if (
@@ -131,6 +131,7 @@ export async function POST(request: Request) {
       .from("webinar_registrations")
       .update({
         status: "paid",
+        amount_paise: expectedAmount,
         razorpay_payment_id: paymentId,
         paid_at: now,
         updated_at: now,

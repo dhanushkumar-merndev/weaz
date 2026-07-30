@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     if (enrollmentError || !enrollment) {
       const { data: registration, error: registrationError } = await supabase
         .from("webinar_registrations")
-        .select("id, status, razorpay_payment_id, webinars!inner(price_paise)")
+        .select("id, status, amount_paise, razorpay_payment_id")
         .eq("razorpay_order_id", payment.order_id)
         .maybeSingle();
 
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
       }
 
       const expectedWebinarAmount = asPositiveInteger(
-        (registration.webinars as { price_paise: number }).price_paise
+        registration.amount_paise ?? amount
       );
       if (!expectedWebinarAmount || expectedWebinarAmount !== amount) {
         console.error("Webhook amount does not match webinar registration", {
@@ -160,6 +160,7 @@ export async function POST(request: Request) {
         .from("webinar_registrations")
         .update({
           status: "paid",
+          amount_paise: expectedWebinarAmount,
           razorpay_payment_id: payment.id,
           paid_at: now,
           updated_at: now,

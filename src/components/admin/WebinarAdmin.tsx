@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
+  Download,
   Eye,
   EyeOff,
   ImagePlus,
@@ -16,6 +17,13 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Webinar {
   id: string;
@@ -26,6 +34,7 @@ interface Webinar {
   image_url: string;
   starts_at: string | null;
   is_visible: boolean;
+  deleted_at: string | null;
   created_at: string;
   whatsapp_group_url: string | null;
 }
@@ -34,6 +43,7 @@ interface Registration {
   id: string;
   webinar_id: string;
   status: string;
+  amount_paise: number | null;
   form_data: { name?: string; email?: string; phone?: string };
   paid_at: string | null;
   created_at: string;
@@ -99,6 +109,15 @@ async function convertImageToWebp(file: File) {
   }
 }
 
+function escapeSpreadsheetXml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 export function WebinarAdmin() {
   const queryClient = useQueryClient();
   const imageRef = useRef<HTMLInputElement>(null);
@@ -107,6 +126,7 @@ export function WebinarAdmin() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [registrationWebinarId, setRegistrationWebinarId] = useState("all");
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -277,7 +297,7 @@ export function WebinarAdmin() {
   const remove = async (webinar: Webinar) => {
     if (
       !window.confirm(
-        `Remove "${webinar.title}"? Webinars with registrations can only be hidden.`
+        `Delete "${webinar.title}"? It will be removed from the public site, but its registrations and payment records will remain available in the webinar filter.`
       )
     ) {
       return;
@@ -291,7 +311,7 @@ export function WebinarAdmin() {
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not remove webinar");
-      toast.success("Webinar and poster removed");
+      toast.success("Webinar deleted; registrations were preserved");
       await refreshWebinarData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Remove failed");
@@ -334,6 +354,109 @@ export function WebinarAdmin() {
   }
 
   const registrations = data?.registrations ?? [];
+  const webinars = data?.webinars ?? [];
+  const activeWebinars = webinars.filter((webinar) => !webinar.deleted_at);
+  const filteredRegistrations =
+    registrationWebinarId === "all"
+      ? registrations
+      : registrations.filter(
+          (registration) => registration.webinar_id === registrationWebinarId
+        );
+
+  const exportRegistrations = () => {
+    if (filteredRegistrations.length === 0) {
+      toast.error("There are no registrations to export for this filter");
+      return;
+    }
+
+    const columns = [
+      "Registration ID",
+      "Webinar",
+      "Webinar deleted",
+      "Attendee name",
+      "Email",
+      "Phone",
+      "Status",
+      "Amount (INR)",
+      "Payment ID",
+      "Registered at",
+      "Paid at",
+    ];
+    const rows = filteredRegistrations.map((registration) => {
+      const webinar = webinars.find(
+        (item) => item.id === registration.webinar_id
+      );
+      return [
+        registration.id,
+        webinar?.title ?? "Unknown webinar",
+        webinar?.deleted_at ? "Yes" : "No",
+        registration.form_data?.name ?? "",
+        registration.form_data?.email ?? "",
+        registration.form_data?.phone ?? "",
+        registration.status === "paid" ? "Paid" : "Pending",
+        registration.amount_paise === null
+          ? ""
+          : (registration.amount_paise / 100).toFixed(2),
+        registration.razorpay_payment_id ?? "",
+        new Date(registration.created_at).toLocaleString("en-IN"),
+        registration.paid_at
+          ? new Date(registration.paid_at).toLocaleString("en-IN")
+          : "",
+      ];
+    });
+    const xmlRow = (cells: unknown[]) =>
+      `<Row>${cells
+        .map(
+          (cell) =>
+            `<Cell><Data ss:Type="String">${escapeSpreadsheetXml(cell)}</Data></Cell>`
+        )
+        .join("")}</Row>`;
+    const workbook = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#9B59D0" ss:Pattern="Solid"/></Style>
+ </Styles>
+ <Worksheet ss:Name="Registrations">
+  <Table>
+   ${`<Row ss:StyleID="Header">${columns
+     .map(
+       (column) =>
+         `<Cell><Data ss:Type="String">${escapeSpreadsheetXml(column)}</Data></Cell>`
+     )
+     .join("")}</Row>`}
+   ${rows.map(xmlRow).join("")}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
+
+    const selectedWebinar = webinars.find(
+      (webinar) => webinar.id === registrationWebinarId
+    );
+    const fileLabel = (selectedWebinar?.title ?? "all-webinars")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 50);
+    const blob = new Blob([workbook], {
+      type: "application/vnd.ms-excel;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `webinar-registrations-${fileLabel || "export"}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredRegistrations.length} registrations`);
+  };
 
   return (
     <div className="space-y-6">
@@ -578,7 +701,7 @@ export function WebinarAdmin() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {(data?.webinars ?? []).map((webinar) => {
+        {activeWebinars.map((webinar) => {
           const webinarRegistrations = registrations.filter(
             (registration) => registration.webinar_id === webinar.id
           );
@@ -667,16 +790,65 @@ export function WebinarAdmin() {
         })}
       </div>
 
-      {(data?.webinars ?? []).length === 0 && (
+      {activeWebinars.length === 0 && (
         <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center text-sm text-white/35">
           No webinars yet. The public site remains exactly as it is now.
         </div>
       )}
 
       <section className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#15111D]/50">
-        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-          <h3 className="font-display font-bold text-white">Webinar registrations</h3>
-          <span className="text-xs text-white/35">{registrations.length} total</span>
+        <div className="flex flex-col gap-3 border-b border-white/[0.06] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="font-display font-bold text-white">
+              Webinar registrations
+            </h3>
+            <span className="text-xs text-white/35">
+              {filteredRegistrations.length} shown / {registrations.length} total
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Select
+              value={registrationWebinarId}
+              onValueChange={setRegistrationWebinarId}
+            >
+              <SelectTrigger
+                aria-label="Filter registrations by webinar"
+                className="h-10 w-full min-w-64 border-white/10 bg-black/25 text-white sm:w-80"
+              >
+                <SelectValue placeholder="Choose a webinar" />
+              </SelectTrigger>
+              <SelectContent
+                data-lenis-prevent
+                className="max-h-64 overflow-y-auto border-white/10 bg-[#1A1525] text-white"
+              >
+                <SelectItem
+                  value="all"
+                  className="focus:bg-white/10 focus:text-white"
+                >
+                  All webinars
+                </SelectItem>
+                {webinars.map((webinar) => (
+                  <SelectItem
+                    key={webinar.id}
+                    value={webinar.id}
+                    className="focus:bg-white/10 focus:text-white"
+                  >
+                    {webinar.title}
+                    {webinar.deleted_at ? " (Deleted)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              disabled={filteredRegistrations.length === 0}
+              onClick={exportRegistrations}
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 text-sm font-bold text-[#08130d] transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Download size={16} />
+              Export Excel
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -690,7 +862,7 @@ export function WebinarAdmin() {
               </tr>
             </thead>
             <tbody>
-              {registrations.map((registration) => (
+              {filteredRegistrations.map((registration) => (
                 <tr key={registration.id} className="border-t border-white/[0.04]">
                   <td className="px-4 py-3">
                     <div className="text-white/80">
@@ -701,9 +873,16 @@ export function WebinarAdmin() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-white/55">
-                    {data?.webinars.find(
+                    {webinars.find(
                       (webinar) => webinar.id === registration.webinar_id
                     )?.title || "Webinar"}
+                    {webinars.find(
+                      (webinar) => webinar.id === registration.webinar_id
+                    )?.deleted_at && (
+                      <span className="ml-2 rounded bg-red-400/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-red-300/70">
+                        Deleted
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-mono text-white/50">
                     {registration.form_data?.phone || "—"}
@@ -726,9 +905,9 @@ export function WebinarAdmin() {
               ))}
             </tbody>
           </table>
-          {registrations.length === 0 && (
+          {filteredRegistrations.length === 0 && (
             <div className="py-12 text-center text-sm text-white/30">
-              No webinar registrations yet.
+              No webinar registrations for this filter.
             </div>
           )}
         </div>

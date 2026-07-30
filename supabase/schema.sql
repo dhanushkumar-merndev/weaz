@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS webinars (
   whatsapp_group_url TEXT,
   starts_at TIMESTAMPTZ,
   is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+  deleted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -59,6 +60,7 @@ CREATE TABLE IF NOT EXISTS webinar_registrations (
   user_id TEXT NOT NULL,
   webinar_id UUID NOT NULL REFERENCES webinars(id) ON DELETE RESTRICT,
   status TEXT NOT NULL DEFAULT 'pending',
+  amount_paise BIGINT CHECK (amount_paise IS NULL OR amount_paise > 0),
   form_data JSONB NOT NULL DEFAULT '{}',
   razorpay_order_id TEXT,
   razorpay_payment_id TEXT,
@@ -76,3 +78,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_webinar_registrations_payment_unique
 CREATE UNIQUE INDEX IF NOT EXISTS idx_webinars_only_one_visible
   ON webinars ((is_visible))
   WHERE is_visible = TRUE;
+CREATE INDEX IF NOT EXISTS idx_webinars_deleted_created
+  ON webinars (deleted_at, created_at DESC);

@@ -13,6 +13,7 @@ export const getCachedActiveWebinar = unstable_cache(
         "id, title, announcement_text, description, price_paise, image_path, starts_at"
       )
       .eq("is_visible", true)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

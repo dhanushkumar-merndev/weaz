@@ -57,7 +57,9 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     const { data: registration, error } = await supabase
       .from("webinar_registrations")
-      .select("id, status, razorpay_order_id, webinars!inner(price_paise)")
+      .select(
+        "id, status, amount_paise, razorpay_order_id, webinars!inner(price_paise)"
+      )
       .eq("id", registrationId)
       .eq("user_id", user.id)
       .single();
@@ -67,14 +69,32 @@ export async function POST(request: Request) {
       return errorResponse("This registration is not awaiting payment", 409);
     }
 
-    const amount = asPositiveInteger(
-      (registration.webinars as { price_paise: number }).price_paise
+    let amount = asPositiveInteger(
+      registration.amount_paise ??
+        (registration.webinars as { price_paise: number }).price_paise
     );
     if (!amount) return errorResponse("The webinar has an invalid price", 500);
 
     const razorpay = getRazorpay();
     if (registration.razorpay_order_id) {
       const order = await razorpay.orders.fetch(registration.razorpay_order_id);
+      const legacyOrderAmount = asPositiveInteger(order.amount);
+      if (registration.amount_paise === null && legacyOrderAmount) {
+        amount = legacyOrderAmount;
+        const { error: snapshotError } = await supabase
+          .from("webinar_registrations")
+          .update({
+            amount_paise: legacyOrderAmount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", registration.id)
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .is("amount_paise", null);
+        if (snapshotError) {
+          return errorResponse("Could not save the original order amount", 500);
+        }
+      }
       if (!orderMatches(order, registration.id, amount)) {
         return errorResponse("Stored payment order is invalid", 409);
       }
@@ -116,6 +136,7 @@ export async function POST(request: Request) {
     const { data: attached, error: updateError } = await supabase
       .from("webinar_registrations")
       .update({
+        amount_paise: amount,
         razorpay_order_id: order.id,
         updated_at: new Date().toISOString(),
       })

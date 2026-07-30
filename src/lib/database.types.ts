@@ -136,6 +136,7 @@ export type Database = {
       }
       webinar_registrations: {
         Row: {
+          amount_paise: number | null
           created_at: string
           form_data: Json
           id: string
@@ -148,6 +149,7 @@ export type Database = {
           webinar_id: string
         }
         Insert: {
+          amount_paise?: number | null
           created_at?: string
           form_data?: Json
           id?: string
@@ -160,6 +162,7 @@ export type Database = {
           webinar_id: string
         }
         Update: {
+          amount_paise?: number | null
           created_at?: string
           form_data?: Json
           id?: string
@@ -185,6 +188,7 @@ export type Database = {
         Row: {
           announcement_text: string
           created_at: string
+          deleted_at: string | null
           description: string
           id: string
           image_path: string
@@ -198,6 +202,7 @@ export type Database = {
         Insert: {
           announcement_text: string
           created_at?: string
+          deleted_at?: string | null
           description: string
           id?: string
           image_path: string
@@ -211,6 +216,7 @@ export type Database = {
         Update: {
           announcement_text?: string
           created_at?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           image_path?: string
