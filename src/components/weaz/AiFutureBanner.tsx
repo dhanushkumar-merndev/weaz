@@ -166,7 +166,12 @@ export function AiFutureBanner() {
         </motion.p>
 
         {activeWebinar?.starts_at && (
-          <motion.div variants={itemVariants} className="mt-9">
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+            className="mt-9"
+          >
             <WebinarCountdown startsAt={activeWebinar.starts_at} />
           </motion.div>
         )}
@@ -174,6 +179,8 @@ export function AiFutureBanner() {
         {activeWebinar && (
           <motion.div
             variants={itemVariants}
+            initial="hidden"
+            animate="visible"
             className={activeWebinar.starts_at ? "mt-7" : "mt-9"}
           >
             <ShineButton
