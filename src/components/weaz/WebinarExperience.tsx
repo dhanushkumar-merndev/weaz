@@ -34,7 +34,11 @@ import {
 } from "@/lib/razorpay-checkout";
 import { formatIndiaDateTime } from "@/lib/india-time";
 import { useActiveWebinar } from "@/hooks/useActiveWebinar";
-import { trackMetaPurchase, trackMetaWebinarView } from "@/lib/meta-pixel";
+import {
+  trackMetaPurchase,
+  trackMetaWebinarCheckout,
+  trackMetaWebinarView,
+} from "@/lib/meta-pixel";
 
 type ModalView = "promo" | "form" | "access" | "success" | null;
 
@@ -198,6 +202,12 @@ export function WebinarExperience() {
       toast.error("Enter your name and a valid 10-digit phone number");
       return;
     }
+
+    trackMetaWebinarCheckout({
+      amountPaise: webinar.price_paise,
+      contentId: webinar.id,
+      contentName: webinar.title,
+    });
 
     setSubmitting(true);
     try {

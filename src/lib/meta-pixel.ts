@@ -31,6 +31,8 @@ interface MetaWebinarView {
   contentName: string;
 }
 
+type MetaWebinarCheckout = MetaWebinarView;
+
 export function trackMetaWebinarView({
   amountPaise,
   currency = "INR",
@@ -38,13 +40,6 @@ export function trackMetaWebinarView({
   contentName,
 }: MetaWebinarView) {
   if (typeof window === "undefined" || !window.fbq) return;
-
-  const storageKey = `weaz-meta-webinar-view:${contentId}`;
-  try {
-    if (window.sessionStorage.getItem(storageKey)) return;
-  } catch {
-    // Tracking should still work if storage is unavailable.
-  }
 
   window.fbq("track", "ViewContent", {
     value: amountPaise / 100,
@@ -54,12 +49,25 @@ export function trackMetaWebinarView({
     content_type: "product",
     content_category: "webinar",
   });
+}
 
-  try {
-    window.sessionStorage.setItem(storageKey, "1");
-  } catch {
-    // The event was sent even if storage is unavailable.
-  }
+export function trackMetaWebinarCheckout({
+  amountPaise,
+  currency = "INR",
+  contentId,
+  contentName,
+}: MetaWebinarCheckout) {
+  if (typeof window === "undefined" || !window.fbq) return;
+
+  window.fbq("track", "InitiateCheckout", {
+    value: amountPaise / 100,
+    currency: currency.toUpperCase(),
+    content_ids: [contentId],
+    content_name: contentName,
+    content_type: "product",
+    content_category: "webinar",
+    num_items: 1,
+  });
 }
 
 export function trackMetaPurchase({
