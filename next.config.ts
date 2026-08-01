@@ -1,10 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  allowedDevOrigins: ["192.168.1.18", "192.168.1.10"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "connect.facebook.net",
+      },
+      {
+        protocol: "https",
+        hostname: "www.facebook.com",
+      },
+    ],
+  },
 };
-module.exports = {
-  allowedDevOrigins: ['192.168.1.18',"192.168.1.10"],
-}
+
 export default nextConfig;

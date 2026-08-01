@@ -5,6 +5,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { WebinarExperience } from "@/components/weaz/WebinarExperience";
+import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { SITE_URL, WEAZ_ADDRESS } from "@/lib/site-details";
 
 const organizationSchema = {
@@ -77,6 +78,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" data-scroll-behavior="smooth">
       <body className="bg-[#0F0B14] text-white antialiased" suppressHydrationWarning>
+        <MetaPixel />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}

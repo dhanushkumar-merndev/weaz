@@ -34,6 +34,7 @@ import {
 } from "@/lib/razorpay-checkout";
 import { formatIndiaDateTime } from "@/lib/india-time";
 import { useActiveWebinar } from "@/hooks/useActiveWebinar";
+import { trackMetaPurchase, trackMetaWebinarView } from "@/lib/meta-pixel";
 
 type ModalView = "promo" | "form" | "access" | "success" | null;
 
@@ -152,6 +153,11 @@ export function WebinarExperience() {
   const openForm = useCallback(async () => {
     if (!webinar) return;
     promoHandled.current = true;
+    trackMetaWebinarView({
+      amountPaise: webinar.price_paise,
+      contentId: webinar.id,
+      contentName: webinar.title,
+    });
     setForm((current) => ({
       ...current,
       name:
@@ -267,6 +273,13 @@ export function WebinarExperience() {
             setSubmitting(false);
             return;
           }
+          trackMetaPurchase({
+            amountPaise: order.amount,
+            currency: order.currency,
+            contentId: webinar.id,
+            contentName: webinar.title,
+            eventId: result.razorpay_order_id,
+          });
           await checkPurchasedAccess();
           setSubmitting(false);
           setView("success");
