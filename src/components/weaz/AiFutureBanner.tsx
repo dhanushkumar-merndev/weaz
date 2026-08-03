@@ -8,7 +8,7 @@ import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { ShineButton } from "@/components/ui/ShineButton";
 import { useActiveWebinar } from "@/hooks/useActiveWebinar";
 import { useWebinarAvailability } from "@/hooks/useWebinarAvailability";
-import { WebinarSlotMeter, WebinarSlotBadge } from "@/components/weaz/WebinarSlotMeter";
+import { WebinarSlotMeter } from "@/components/weaz/WebinarSlotMeter";
 import { getRegistrationCtaText } from "@/lib/webinar-slots";
 
 const itemVariants: Variants = {
@@ -187,9 +187,8 @@ export function AiFutureBanner() {
             variants={itemVariants}
             initial="hidden"
             animate="visible"
-            className="mt-7 flex flex-col items-center gap-4"
+            className="mt-7 flex flex-col items-center"
           >
-            <WebinarSlotBadge availability={availability} />
             <WebinarSlotMeter
               availability={availability}
               className="w-full max-w-md text-left"

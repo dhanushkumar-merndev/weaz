@@ -48,10 +48,7 @@ import {
   getRegistrationCtaText,
   type WebinarAvailability,
 } from "@/lib/webinar-slots";
-import {
-  WebinarSlotBadge,
-  WebinarSlotMeter,
-} from "@/components/weaz/WebinarSlotMeter";
+import { WebinarSlotMeter } from "@/components/weaz/WebinarSlotMeter";
 import { WebinarAnnouncementMarquee } from "@/components/weaz/WebinarAnnouncementMarquee";
 import {
   trackMetaPurchase,
@@ -473,15 +470,11 @@ export function WebinarExperience() {
                   decoding="async"
                 />
               </div>
-              <div className="relative flex flex-1 flex-col px-5 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] pt-3 sm:justify-center sm:p-9">
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.26em] text-[#FBBF24] sm:mb-3 sm:text-xs">
+              {/* No bottom padding at sm+: the CTA block is pushed down by its
+                  own auto margin so it lines up with the poster's bottom edge. */}
+              <div className="relative flex flex-1 flex-col px-5 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] pt-3 sm:px-8 sm:pb-0 sm:pt-8">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.26em] text-[#FBBF24] sm:mb-3 sm:text-xs">
                   Live webinar
-                  {availability && (
-                    <WebinarSlotBadge
-                      availability={availability}
-                      className="tracking-[0.14em]"
-                    />
-                  )}
                 </div>
                 <DialogTitle className="max-w-md font-display text-[1.75rem] font-black leading-[1.05] sm:text-3xl">
                   {webinar.title}
@@ -504,14 +497,14 @@ export function WebinarExperience() {
                   />
                 )}
 
-                <div className="mt-4 flex items-end justify-between gap-3 sm:mt-5">
+                <div className="mt-4 flex items-end justify-between gap-3 pb-1 sm:mt-5">
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
                       {freeAvailable ? "You pay today" : "Entry fee"}
                     </div>
-                    <div className="mt-1 font-display text-[1.6rem] font-black leading-none sm:text-[1.85rem]">
+                    <div className="mt-1 font-display text-xl font-black leading-none sm:text-2xl">
                       {freeAvailable ? (
-                        <span className="text-emerald-300">Free</span>
+                        <span className="text-[#FBBF24]">Free</span>
                       ) : (
                         <span className="text-white">{priceLabel}</span>
                       )}
@@ -525,7 +518,7 @@ export function WebinarExperience() {
                 </div>
 
                 {/* Pinned to the bottom edge of the panel on desktop. */}
-                <div className="mt-6 border-t border-white/[0.07] pt-4 sm:mt-auto">
+                <div className="mt-6 border-t border-white/[0.07] pt-5 sm:mt-auto sm:pt-6">
                   <ShineButton
                     type="button"
                     onClick={openForm}
@@ -653,7 +646,7 @@ export function WebinarExperience() {
                     </span>
                     <span className="font-display text-xl font-black">
                       {freeAvailable ? (
-                        <span className="text-emerald-300">
+                        <span className="text-[#FBBF24]">
                           ₹0
                           <span className="ml-2 text-sm font-bold text-white/35 line-through">
                             {priceLabel}

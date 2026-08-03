@@ -1,10 +1,8 @@
 "use client";
 
-import { CheckCircle2, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import {
   formatRupees,
-  getSlotBadgeText,
-  getSlotStatusText,
   getSlotTone,
   type SlotTone,
   type WebinarAvailability,
@@ -15,16 +13,17 @@ const TONE_STYLES: Record<
   { bar: string; dot: string; text: string; ring: string }
 > = {
   open: {
-    bar: "bg-emerald-400",
-    dot: "bg-emerald-400",
-    text: "text-emerald-300",
-    ring: "border-emerald-400/25 bg-emerald-400/[0.07]",
+    bar: "bg-[#FBBF24]",
+    dot: "bg-[#FBBF24]",
+    text: "text-[#FBBF24]",
+    ring: "border-[#FBBF24]/30 bg-[#FBBF24]/[0.07]",
   },
+  // A deeper orange so "filling fast" stays distinct from the gold open state.
   limited: {
-    bar: "bg-[#FB923C]",
-    dot: "bg-[#FB923C]",
-    text: "text-[#FDBA74]",
-    ring: "border-[#FB923C]/30 bg-[#FB923C]/[0.08]",
+    bar: "bg-[#F97316]",
+    dot: "bg-[#F97316]",
+    text: "text-[#FB923C]",
+    ring: "border-[#F97316]/35 bg-[#F97316]/[0.09]",
   },
   closed: {
     bar: "bg-[#F87171]",
@@ -54,102 +53,78 @@ export function WebinarSlotMeter({
   const tone = getSlotTone(availability);
   const styles = TONE_STYLES[tone];
   const { freeSlotLimit, freeSlotsClaimed, freeSlotsRemaining } = availability;
-  const filledPercent =
-    freeSlotLimit > 0
-      ? Math.min(100, Math.round((freeSlotsClaimed / freeSlotLimit) * 100))
-      : 100;
 
   // Nothing to meter when the webinar is paid-only. The price and the secure
   // payment note already carry that, and repeating it just crowds the CTA.
   if (!availability.freeRegistrationEnabled) return null;
 
+  // The bar shows seats still open, so a fresh webinar reads as full rather
+  // than as an empty, unfinished-looking track.
+  const remainingPercent =
+    freeSlotLimit > 0
+      ? Math.max(0, Math.min(100, (freeSlotsRemaining / freeSlotLimit) * 100))
+      : 0;
+
   return (
     <div
-      className={`rounded-2xl border ${styles.ring} p-4 ${className}`}
+      className={`card-shine rounded-2xl border ${styles.ring} px-4 py-3.5 ${className}`}
       data-testid="webinar-slot-meter"
       data-tone={tone}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-white/70">
-          <Users size={14} className="shrink-0 text-white/45" />
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FBBF24]">
+          <Users size={13} className="shrink-0" />
           Free registration
         </span>
         <span
-          className={`inline-flex items-center gap-1.5 text-xs font-bold ${styles.text}`}
+          className={`inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold ${styles.text}`}
         >
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${styles.dot}`}
             aria-hidden="true"
           />
-          {tone === "closed" ? "Closed" : tone === "limited" ? "Filling fast" : "Open"}
+          {tone === "closed"
+            ? "Closed"
+            : tone === "limited"
+              ? "Filling fast"
+              : "Open"}
         </span>
       </div>
 
-      <div className="mt-2 font-display text-lg font-black leading-tight text-white sm:text-xl">
-        {freeSlotsRemaining > 0
-          ? `${freeSlotsRemaining} ${freeSlotsRemaining === 1 ? "slot" : "slots"} available out of ${freeSlotLimit}`
-          : `All ${freeSlotLimit} free slots claimed`}
+      <div className="mt-2.5 flex items-baseline gap-2">
+        <span className="font-display text-2xl font-black leading-none text-[#FBBF24]">
+          {freeSlotsRemaining > 0 ? freeSlotsRemaining : "0"}
+        </span>
+        <span className="text-sm font-medium text-white/50">
+          {freeSlotsRemaining > 0
+            ? `of ${freeSlotLimit} free seats left`
+            : `of ${freeSlotLimit} free seats left`}
+        </span>
       </div>
 
       <div
-        className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-white/10"
+        className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={freeSlotLimit}
-        aria-valuenow={freeSlotsClaimed}
-        aria-label={`${freeSlotsClaimed} of ${freeSlotLimit} free slots claimed`}
+        aria-valuenow={freeSlotsRemaining}
+        aria-label={`${freeSlotsRemaining} of ${freeSlotLimit} free seats left`}
       >
         <div
           className={`h-full rounded-full ${styles.bar} transition-[width] duration-500 ease-out`}
-          style={{ width: `${filledPercent}%` }}
+          style={{ width: `${remainingPercent}%` }}
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
-        <span className={`font-semibold ${styles.text}`}>
-          {getSlotStatusText(availability)}
-        </span>
-        <span className="text-white/40">
-          {freeSlotsClaimed} of {freeSlotLimit} claimed
-        </span>
-      </div>
-
-      {!availability.freeRegistrationAvailable && (
-        <p className="mt-2.5 text-xs leading-5 text-white/55">
-          Free registration is now closed. Paid registration is still available
-          at {formatRupees(availability.pricePaise)}.
+      {/* Only shown when it adds something the numbers above do not. */}
+      {(tone !== "open" || freeSlotsClaimed > 0) && (
+        <p className="mt-2.5 text-[11px] leading-4 text-white/45">
+          {availability.freeRegistrationAvailable
+            ? `${freeSlotsClaimed} already claimed`
+            : `Free registration closed · Paid entry ${formatRupees(availability.pricePaise)}`}
         </p>
       )}
     </div>
   );
 }
 
-/** Compact badge for hero sections and webinar listing cards. */
-export function WebinarSlotBadge({
-  availability,
-  className = "",
-}: {
-  availability: WebinarAvailability;
-  className?: string;
-}) {
-  const tone = getSlotTone(availability);
-  const styles = TONE_STYLES[tone];
-
-  return (
-    <span
-      data-testid="webinar-slot-badge"
-      data-tone={tone}
-      className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px] ${styles.ring} ${styles.text} ${className}`}
-    >
-      {tone === "closed" ? (
-        <CheckCircle2 size={13} className="shrink-0" aria-hidden="true" />
-      ) : (
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${styles.dot}`}
-          aria-hidden="true"
-        />
-      )}
-      <span className="truncate">{getSlotBadgeText(availability)}</span>
-    </span>
-  );
-}

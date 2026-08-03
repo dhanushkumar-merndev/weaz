@@ -91,20 +91,6 @@ export function getCtaHelperText(availability: WebinarAvailability) {
     : `${availability.freeSlotsRemaining} of ${availability.freeSlotLimit} free slots available`;
 }
 
-/** Short badge for webinar cards and the hero. */
-export function getSlotBadgeText(availability: WebinarAvailability) {
-  switch (getSlotTone(availability)) {
-    case "paid-only":
-      return "PAID REGISTRATION";
-    case "closed":
-      return "FREE SLOTS FULL · PAID REGISTRATION OPEN";
-    default:
-      return `FREE — ${availability.freeSlotsRemaining} ${
-        availability.freeSlotsRemaining === 1 ? "SLOT" : "SLOTS"
-      } LEFT`;
-  }
-}
-
 /** Main call-to-action label, always derived from the server response. */
 export function getRegistrationCtaText(availability: WebinarAvailability) {
   return availability.freeRegistrationAvailable

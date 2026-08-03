@@ -220,6 +220,37 @@ body.has-webinar-announcement main {
   }
 }
 
+/*
+ * Slow gold sweep across a surface. Reuses the button shine keyframes but at a
+ * lower opacity and a longer cycle, so it reads as a highlight on a card
+ * rather than a call to action.
+ */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 55%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 35%,
+    rgba(251, 191, 36, 0.18) 50%,
+    rgba(255, 255, 255, 0.05) 65%,
+    transparent 100%
+  );
+  transform: rotate(22deg);
+  pointer-events: none;
+  z-index: 1;
+  animation: shine-sweep 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 .webinar-marquee {
   overflow: hidden;
   white-space: nowrap;
@@ -345,6 +376,11 @@ body.has-webinar-announcement main {
 
   .company-marquee-track {
     animation: none !important;
+  }
+
+  .card-shine::after {
+    animation: none !important;
+    opacity: 0;
   }
 
   /* The announcement stays readable on one line without any movement. */
