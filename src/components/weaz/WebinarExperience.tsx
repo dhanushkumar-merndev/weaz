@@ -51,6 +51,11 @@ import {
 import { WebinarSlotMeter } from "@/components/weaz/WebinarSlotMeter";
 import { WebinarAnnouncementMarquee } from "@/components/weaz/WebinarAnnouncementMarquee";
 import {
+  mergeEntered,
+  saveAuthIntent,
+  takeAuthIntent,
+} from "@/lib/auth-intent";
+import {
   trackMetaPurchase,
   trackMetaWebinarCheckout,
   trackMetaWebinarView,
@@ -183,7 +188,9 @@ export function WebinarExperience() {
     return false;
   }, [user, webinar]);
 
-  const openForm = useCallback(async () => {
+  const openForm = useCallback(async (
+    prefill?: { name: string; phone: string }
+  ) => {
     if (!webinar) return;
     promoHandled.current = true;
     trackMetaWebinarView({
@@ -191,14 +198,17 @@ export function WebinarExperience() {
       contentId: webinar.id,
       contentName: webinar.title,
     });
-    setForm((current) => ({
-      ...current,
-      name:
-        current.name ||
-        user?.user_metadata?.full_name ||
-        user?.email?.split("@")[0] ||
-        "",
-    }));
+    setForm((current) => {
+      const restored = prefill ? mergeEntered(current, prefill) : current;
+      return {
+        ...restored,
+        name:
+          restored.name ||
+          user?.user_metadata?.full_name ||
+          user?.email?.split("@")[0] ||
+          "",
+      };
+    });
     setView("form");
     void loadRazorpayScript();
     void refreshAvailability(webinar.id);
@@ -218,6 +228,20 @@ export function WebinarExperience() {
     return () =>
       window.removeEventListener("weaz-open-webinar", handleOpenRequest);
   }, [openForm]);
+
+  // Reopen the registration form after a Google sign-in redirect, with the
+  // details the visitor had already typed.
+  useEffect(() => {
+    if (!user || !webinar || excluded) return;
+
+    const intent = takeAuthIntent();
+    if (intent?.type !== "webinar" || intent.webinarId !== webinar.id) return;
+
+    // A single render after the OAuth redirect is the intended effect here,
+    // and taking the intent removes it, so this cannot run twice.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void openForm(intent.form);
+  }, [excluded, openForm, user, webinar]);
 
   const closeModal = (open: boolean) => {
     if (!open && !submitting) setView(null);
@@ -428,7 +452,7 @@ export function WebinarExperience() {
         >
           <button
             type="button"
-            onClick={openForm}
+            onClick={() => void openForm()}
             className="block w-full cursor-pointer overflow-hidden py-2 pl-4 pr-10 text-xs font-semibold text-white sm:text-sm"
           >
             <WebinarAnnouncementMarquee
@@ -521,7 +545,7 @@ export function WebinarExperience() {
                 <div className="mt-6 border-t border-white/[0.07] pt-5 sm:mt-auto sm:pt-6">
                   <ShineButton
                     type="button"
-                    onClick={openForm}
+                    onClick={() => void openForm()}
                     variant="gold"
                     className="min-h-[3.25rem] w-full !px-6 !py-3.5 !text-[0.95rem] tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021]"
                   >
@@ -589,7 +613,15 @@ export function WebinarExperience() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => signInWithGoogle()}
+                    onClick={() => {
+                      // Remembered across the redirect so this form reopens.
+                      saveAuthIntent({
+                        type: "webinar",
+                        webinarId: webinar.id,
+                        form: { name: form.name, phone: form.phone },
+                      });
+                      void signInWithGoogle();
+                    }}
                     className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0F0B14] shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021]"
                   >
                     <svg

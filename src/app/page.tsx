@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { peekAuthIntent } from "@/lib/auth-intent";
+import { useAuth } from "@/providers/AuthProvider";
 import Navbar from "@/components/weaz/Navbar";
 import Hero from "@/components/weaz/Hero";
 import { AiFutureBanner } from "@/components/weaz/AiFutureBanner";
@@ -17,6 +19,7 @@ import { EnrollmentModal } from "@/components/weaz/EnrollmentModal";
 import WhatsAppFab from "@/components/weaz/WhatsAppFab";
 
 export default function Home() {
+  const { user, loading } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [defaultProgram, setDefaultProgram] = useState("");
 
@@ -24,6 +27,17 @@ export default function Home() {
     setDefaultProgram(program);
     setModalOpen(true);
   }, []);
+
+  // Someone who signed in from the enrollment form comes back here. Reopen it
+  // so they carry on instead of landing on a blank homepage. The modal itself
+  // consumes the stored intent to restore the program and typed details.
+  useEffect(() => {
+    if (loading || !user) return;
+    // A single render after the OAuth redirect is the intended effect here,
+    // and the stored intent is consumed by the modal so this cannot repeat.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (peekAuthIntent()?.type === "enrollment") openModal("");
+  }, [loading, openModal, user]);
 
   return (
     <div

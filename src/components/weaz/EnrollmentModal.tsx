@@ -18,6 +18,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import {
+  mergeEntered,
+  saveAuthIntent,
+  takeAuthIntent,
+} from "@/lib/auth-intent";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
@@ -102,6 +107,14 @@ export function EnrollmentModal({
           user.email?.split("@")[0] ||
           "";
         setForm((f) => ({ ...f, name }));
+      }
+
+      // Restore whatever was typed before the Google sign-in redirect. Applied
+      // last so it wins over the account name and the default program.
+      const intent = takeAuthIntent();
+      if (intent?.type === "enrollment") {
+        setForm((f) => mergeEntered(f, intent.form));
+        if (intent.programId) setSelectedProgramId(intent.programId);
       }
     });
   }, [open, rawDefault, supabase, user]);
@@ -388,7 +401,16 @@ export function EnrollmentModal({
                     securely linked to one account.
                   </p>
                   <button
-                    onClick={() => signInWithGoogle()}
+                    onClick={() => {
+                      // Remembered across the redirect so this form reopens
+                      // with the same program and details.
+                      saveAuthIntent({
+                        type: "enrollment",
+                        programId: selectedProgramId,
+                        form,
+                      });
+                      void signInWithGoogle();
+                    }}
                     className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0F0B14] shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021]"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
