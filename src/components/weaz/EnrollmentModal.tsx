@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
+  clearAuthIntent,
   mergeEntered,
+  peekAuthIntent,
   saveAuthIntent,
-  takeAuthIntent,
 } from "@/lib/auth-intent";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -111,8 +112,9 @@ export function EnrollmentModal({
 
       // Restore whatever was typed before the Google sign-in redirect. Applied
       // last so it wins over the account name and the default program.
-      const intent = takeAuthIntent();
+      const intent = peekAuthIntent();
       if (intent?.type === "enrollment") {
+        clearAuthIntent();
         setForm((f) => mergeEntered(f, intent.form));
         if (intent.programId) setSelectedProgramId(intent.programId);
       }

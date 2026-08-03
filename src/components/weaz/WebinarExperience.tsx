@@ -51,9 +51,10 @@ import {
 import { WebinarSlotMeter } from "@/components/weaz/WebinarSlotMeter";
 import { WebinarAnnouncementMarquee } from "@/components/weaz/WebinarAnnouncementMarquee";
 import {
+  clearAuthIntent,
   mergeEntered,
+  peekAuthIntent,
   saveAuthIntent,
-  takeAuthIntent,
 } from "@/lib/auth-intent";
 import {
   trackMetaPurchase,
@@ -234,8 +235,11 @@ export function WebinarExperience() {
   useEffect(() => {
     if (!user || !webinar || excluded) return;
 
-    const intent = takeAuthIntent();
+    // Peek before consuming: this component is mounted site-wide, so it must
+    // not swallow an enrollment intent meant for the enrollment modal.
+    const intent = peekAuthIntent();
     if (intent?.type !== "webinar" || intent.webinarId !== webinar.id) return;
+    clearAuthIntent();
 
     // A single render after the OAuth redirect is the intended effect here,
     // and taking the intent removes it, so this cannot run twice.
