@@ -95,7 +95,7 @@ export function getCtaHelperText(availability: WebinarAvailability) {
 export function getSlotBadgeText(availability: WebinarAvailability) {
   switch (getSlotTone(availability)) {
     case "paid-only":
-      return `PAID · ${formatRupees(availability.pricePaise)}`;
+      return "PAID REGISTRATION";
     case "closed":
       return "FREE SLOTS FULL · PAID REGISTRATION OPEN";
     default:

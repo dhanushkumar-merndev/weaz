@@ -457,7 +457,7 @@ export function WebinarExperience() {
       >
         <DialogContent
           data-lenis-prevent
-          className={`!left-2 !top-2 !right-2 !bottom-2 !block !h-[calc(100dvh_-_1rem)] !max-h-none !w-auto !max-w-none !translate-x-0 !translate-y-0 touch-pan-y overflow-x-hidden overflow-y-scroll overscroll-contain rounded-2xl border border-white/10 bg-[#171021] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [&>button]:sticky [&>button]:top-3 [&>button]:z-20 [&>button]:ml-auto [&>button]:mr-3 [&>button]:-mb-10 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-black/45 [&>button]:text-white [&>button]:opacity-100 [&>button]:backdrop-blur-md [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white/30 sm:!left-1/2 sm:!top-1/2 sm:!right-auto sm:!bottom-auto sm:!grid sm:!h-auto sm:!max-h-[92vh] sm:!w-full sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-2xl sm:p-3 sm:[&>button]:absolute sm:[&>button]:right-4 sm:[&>button]:top-4 sm:[&>button]:m-0 ${
+          className={`!left-2 !top-2 !right-2 !bottom-2 !block !h-[calc(100dvh_-_1rem)] !max-h-none !w-auto !max-w-none !translate-x-0 !translate-y-0 touch-pan-y overflow-x-hidden overflow-y-scroll overscroll-contain rounded-2xl border border-white/10 bg-[#171021] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [&>button]:sticky [&>button]:top-3 [&>button]:z-20 [&>button]:ml-auto [&>button]:mr-3 [&>button]:-mb-10 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-black/45 [&>button]:text-[#FF4D4F] [&>button]:opacity-100 [&>button]:backdrop-blur-md [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white/30 sm:!left-1/2 sm:!top-1/2 sm:!right-auto sm:!bottom-auto sm:!grid sm:!h-auto sm:!max-h-[92vh] sm:!w-[calc(100%_-_3rem)] sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-2xl sm:p-4 lg:!w-full sm:[&>button]:absolute sm:[&>button]:right-4 sm:[&>button]:top-4 sm:[&>button]:m-0 ${
             view === "promo"
               ? "sm:!max-w-3xl"
               : "!left-1/2 !top-1/2 !right-auto !bottom-auto !h-auto !max-h-[calc(100dvh_-_1.5rem)] !w-[calc(100%_-_1.5rem)] !max-w-lg !translate-x-[-50%] !translate-y-[-50%] overflow-y-auto [&>button]:absolute [&>button]:right-3 [&>button]:top-3 [&>button]:m-0 sm:!max-w-lg"
@@ -503,27 +503,46 @@ export function WebinarExperience() {
                     className="mt-4"
                   />
                 )}
-                <div className="mt-3.5 font-display text-[1.75rem] font-black text-white sm:mt-5 sm:text-3xl">
-                  {freeAvailable ? (
-                    <span className="text-emerald-300">
-                      Free
-                      <span className="ml-2 align-middle text-base font-bold text-white/35 line-through">
-                        {priceLabel}
-                      </span>
+
+                <div className="mt-4 flex items-end justify-between gap-3 sm:mt-5">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
+                      {freeAvailable ? "You pay today" : "Entry fee"}
+                    </div>
+                    <div className="mt-1 font-display text-[1.6rem] font-black leading-none sm:text-[1.85rem]">
+                      {freeAvailable ? (
+                        <span className="text-emerald-300">Free</span>
+                      ) : (
+                        <span className="text-white">{priceLabel}</span>
+                      )}
+                    </div>
+                  </div>
+                  {freeAvailable && (
+                    <span className="pb-0.5 text-base font-bold text-white/25 line-through">
+                      {priceLabel}
                     </span>
-                  ) : (
-                    priceLabel
                   )}
                 </div>
-                <ShineButton
-                  type="button"
-                  onClick={openForm}
-                  variant="gold"
-                  className="mt-3.5 min-h-12 w-full !px-6 !py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021] sm:mt-auto sm:!py-3.5"
-                >
-                  {freeAvailable ? "Claim my free seat" : "Reserve my seat"}
-                  <ArrowRight size={18} />
-                </ShineButton>
+
+                {/* Pinned to the bottom edge of the panel on desktop. */}
+                <div className="mt-6 border-t border-white/[0.07] pt-4 sm:mt-auto">
+                  <ShineButton
+                    type="button"
+                    onClick={openForm}
+                    variant="gold"
+                    className="min-h-[3.25rem] w-full !px-6 !py-3.5 !text-[0.95rem] tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021]"
+                  >
+                    {freeAvailable ? "Claim my free seat" : "Reserve my seat"}
+                    <ArrowRight size={17} />
+                  </ShineButton>
+
+                  <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-white/35">
+                    <ShieldCheck size={12} className="shrink-0" />
+                    {freeAvailable
+                      ? "No payment needed · Seat confirmed instantly"
+                      : "Secure payment · UPI, cards & net banking"}
+                  </p>
+                </div>
               </div>
             </div>
           )}

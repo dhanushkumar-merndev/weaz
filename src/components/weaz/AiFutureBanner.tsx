@@ -182,7 +182,7 @@ export function AiFutureBanner() {
           </motion.div>
         )}
 
-        {activeWebinar && availability && (
+        {activeWebinar && availability?.freeRegistrationEnabled && (
           <motion.div
             variants={itemVariants}
             initial="hidden"

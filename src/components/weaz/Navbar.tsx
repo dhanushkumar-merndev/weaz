@@ -253,7 +253,10 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           </motion.span>
         </Link>
 
-        <nav ref={desktopNavRef} className="relative hidden md:flex items-center gap-8">
+        <nav
+          ref={desktopNavRef}
+          className="relative hidden lg:flex items-center gap-6 xl:gap-8"
+        >
           {navItems.map((item, index) => {
             const isActive =
               item.href === "/"
@@ -295,7 +298,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           />
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <ShineButton
             data-testid="nav-enroll-btn"
             onClick={handleEnrollClick}
@@ -405,7 +408,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
         </div>
 
         <button
-          className="md:hidden text-white p-2 cursor-pointer focus:outline-none"
+          className="lg:hidden text-white p-2 cursor-pointer focus:outline-none"
           data-testid="nav-mobile-toggle"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
@@ -425,7 +428,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
               height:
                 "calc(100dvh - var(--webinar-announcement-height, 0px) - 4rem)",
             }}
-            className="absolute inset-x-0 top-full overflow-y-auto overscroll-contain border-t border-white/5 bg-[#100b18]/96 backdrop-blur-2xl md:hidden"
+            className="absolute inset-x-0 top-full overflow-y-auto overscroll-contain border-t border-white/5 bg-[#100b18]/96 backdrop-blur-2xl lg:hidden"
             data-testid="nav-mobile-menu"
             data-lenis-prevent
           >

@@ -197,10 +197,11 @@ body.has-webinar-announcement main {
 /*
  * Webinar announcement marquee.
  *
- * The track is at least as wide as its viewport, so translateX(100%) parks it
- * just past the right edge and translateX(-100%) carries it fully past the
- * left edge. Both ends of the keyframe sit at zero opacity, so the loop fades
- * out and back in instead of snapping.
+ * Only used when the message is wider than the bar. The track is then wider
+ * than its container, so translateX(100%) parks it just past the right edge
+ * and translateX(-100%) carries it fully past the left edge. Both ends of the
+ * keyframe sit at zero opacity, so the loop fades out and back in instead of
+ * snapping. A message that already fits renders centred and still.
  */
 @keyframes webinar-marquee {
   0% {
@@ -226,15 +227,25 @@ body.has-webinar-announcement main {
 
 .webinar-marquee-track {
   display: inline-block;
-  min-width: 100%;
   white-space: nowrap;
+}
+
+.webinar-marquee-static {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.webinar-marquee-moving {
   animation: webinar-marquee var(--webinar-marquee-duration, 22s) linear infinite;
   contain: layout paint;
   will-change: transform, opacity;
 }
 
-.webinar-marquee:hover .webinar-marquee-track,
-.webinar-marquee:focus-within .webinar-marquee-track {
+.webinar-marquee:hover .webinar-marquee-moving,
+.webinar-marquee:focus-within .webinar-marquee-moving {
   animation-play-state: paused;
 }
 
@@ -341,9 +352,10 @@ body.has-webinar-announcement main {
     animation: none !important;
     transform: none !important;
     opacity: 1 !important;
-    min-width: 0;
+    display: block;
     max-width: 100%;
     overflow: hidden;
+    text-align: center;
     text-overflow: ellipsis;
   }
 }

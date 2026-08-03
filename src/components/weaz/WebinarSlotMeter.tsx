@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, CreditCard, Users } from "lucide-react";
+import { CheckCircle2, Users } from "lucide-react";
 import {
   formatRupees,
   getSlotBadgeText,
@@ -59,28 +59,9 @@ export function WebinarSlotMeter({
       ? Math.min(100, Math.round((freeSlotsClaimed / freeSlotLimit) * 100))
       : 100;
 
-  if (!availability.freeRegistrationEnabled) {
-    return (
-      <div
-        className={`rounded-2xl border ${styles.ring} p-4 ${className}`}
-        data-testid="webinar-slot-meter"
-        data-tone={tone}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-2 text-sm font-bold text-white">
-            <CreditCard size={15} className="text-[#C99BEE]" />
-            Paid registration
-          </span>
-          <span className={`text-sm font-bold ${styles.text}`}>
-            {formatRupees(availability.pricePaise)}
-          </span>
-        </div>
-        <p className="mt-1.5 text-xs leading-5 text-white/50">
-          Secure your seat with a one-time payment.
-        </p>
-      </div>
-    );
-  }
+  // Nothing to meter when the webinar is paid-only. The price and the secure
+  // payment note already carry that, and repeating it just crowds the CTA.
+  if (!availability.freeRegistrationEnabled) return null;
 
   return (
     <div

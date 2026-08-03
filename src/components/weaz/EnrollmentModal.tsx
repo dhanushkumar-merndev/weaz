@@ -292,7 +292,7 @@ export function EnrollmentModal({
       onOpenChange={handleOpenChange}
       modal={step !== "paying"}
     >
-      <DialogContent className="!w-[calc(100%_-_1.5rem)] max-h-[calc(100dvh_-_1.5rem)] max-w-lg overflow-x-hidden overflow-y-auto rounded-2xl border-white/10 bg-[#171021] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 sm:rounded-2xl sm:p-3 [&>button]:right-3 [&>button]:top-3 [&>button]:z-20 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-black/45 [&>button]:text-white [&>button]:opacity-100 [&>button]:backdrop-blur-md [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white/30">
+      <DialogContent className="!w-[calc(100%_-_1.5rem)] max-h-[calc(100dvh_-_1.5rem)] max-w-lg overflow-x-hidden overflow-y-auto rounded-2xl border-white/10 bg-[#171021] p-0 text-white shadow-2xl shadow-[#9B59D0]/10 sm:rounded-2xl sm:p-3 [&>button]:right-3 [&>button]:top-3 [&>button]:z-20 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-black/45 [&>button]:text-[#FF4D4F] [&>button]:opacity-100 [&>button]:backdrop-blur-md [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white/30">
         <div className="relative flex min-h-[320px] flex-col p-5 sm:p-6 md:p-8">
           {step === "success" || step === "processing" ? (
             <div className="flex flex-col items-center text-center py-8">

@@ -48,7 +48,7 @@ export function CompanyMarquee() {
   return (
     <section
       aria-label="Leading technology companies"
-      className="relative z-10 overflow-hidden border-y border-white/[0.06] bg-[#0F0B14] py-5 sm:py-7"
+      className="relative z-10 overflow-hidden border-y border-white/[0.06] bg-[#0F0B14] py-5 sm:py-10 lg:py-7"
     >
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-[#0F0B14] to-transparent sm:w-40" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-[#0F0B14] to-transparent sm:w-40" />

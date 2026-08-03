@@ -107,7 +107,9 @@ const Hero = ({ onEnroll }: HeroProps) => {
     <section
       id="top"
       data-testid="hero-section"
-      className="relative overflow-hidden pb-12 pt-20 sm:pb-20 sm:pt-28 md:pb-32 md:pt-40"
+      /* Below lg the right-hand image is hidden, so the desktop bottom padding
+         would leave a dead gap above the next section. */
+      className="relative overflow-hidden pb-10 pt-24 sm:pb-12 sm:pt-32 lg:pb-32 lg:pt-40"
     >
       <div className="absolute inset-0 lg:hidden">
         <img
@@ -172,7 +174,9 @@ const Hero = ({ onEnroll }: HeroProps) => {
 
           <motion.div
             variants={heroItemVariants}
-            className="mt-7 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center"
+            /* Two equal full-width buttons on tablet, matching the width of the
+               stats row below. Content-sized and left-aligned on desktop. */
+            className="mx-auto mt-7 grid w-full max-w-xl grid-cols-1 gap-4 sm:mt-11 sm:grid-cols-2 lg:mx-0 lg:mt-7 lg:flex lg:max-w-none lg:flex-row lg:items-center lg:justify-start"
           >
             <ShineButton
               data-testid="hero-enroll-btn"
@@ -196,21 +200,23 @@ const Hero = ({ onEnroll }: HeroProps) => {
 
           <motion.div
             variants={heroItemVariants}
-            className="mt-12 grid w-full max-w-xl grid-cols-3 text-[8px] uppercase tracking-[0.12em] text-white/40 sm:text-xs sm:tracking-[0.2em]"
+            /* Each stat is centred inside its own equal column, and below lg
+               the whole row is centred in the hero column too. */
+            className="mx-auto mt-12 grid w-full max-w-xl grid-cols-3 items-start divide-x divide-white/10 text-center text-[8px] uppercase tracking-[0.12em] text-white/40 sm:mt-14 sm:text-xs sm:tracking-[0.2em] lg:mx-0 lg:mt-12"
           >
-            <div className="border-r border-white/10 pr-2">
+            <div className="px-2 sm:px-4">
               <div className="font-display text-xl font-bold text-white sm:text-2xl">
                 <GsapCounter end={90} suffix="%+" />
               </div>
               <div className="mt-1 leading-tight">Placement Rate</div>
             </div>
-            <div className="border-r border-white/10 px-3 sm:px-6">
+            <div className="px-2 sm:px-4">
               <div className="font-display text-xl font-bold text-white sm:text-2xl">
                 <GsapCounter end={3} duration={1.2} />
               </div>
               <div className="mt-1 leading-tight">Signature Programs</div>
             </div>
-            <div className="pl-3 sm:pl-6">
+            <div className="px-2 sm:px-4">
               <div className="font-display text-xl font-bold text-white sm:text-2xl">
                 1:1
               </div>
