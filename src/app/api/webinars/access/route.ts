@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/supabase/api";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { isEnrollmentId } from "@/lib/payment-security";
+import { getConfirmedAccess } from "@/lib/webinar-registration";
 
 function response(body: object, status = 200) {
   return NextResponse.json(body, {
@@ -10,6 +11,10 @@ function response(body: object, status = 200) {
   });
 }
 
+/**
+ * The private group link is returned only for a confirmed registration that
+ * belongs to the signed-in user, whether it was free or paid.
+ */
 export async function GET(request: Request) {
   const user = await getUserFromRequest(request);
   if (!user) return response({ error: "Unauthorized" }, 401);
@@ -19,33 +24,27 @@ export async function GET(request: Request) {
     return response({ error: "Invalid webinar id" }, 400);
   }
 
-  const supabase = getSupabaseAdmin();
-  const { data: registration, error } = await supabase
-    .from("webinar_registrations")
-    .select("id, webinars!inner(title, whatsapp_group_url)")
-    .eq("user_id", user.id)
-    .eq("webinar_id", webinarId)
-    .eq("status", "paid")
-    .order("paid_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  try {
+    const access = await getConfirmedAccess(
+      getSupabaseAdmin(),
+      user.id,
+      webinarId
+    );
+    if (!access) return response({ purchased: false, registered: false });
 
-  if (error) {
-    console.error("Could not check webinar access", error.message);
+    return response({
+      // `purchased` is kept for the previous client bundle.
+      purchased: true,
+      registered: true,
+      registration_id: access.registrationId,
+      status: access.status,
+      registration_type: access.registrationType,
+      amount_paid: access.amountPaid,
+      webinar_title: access.webinarTitle,
+      whatsapp_group_url: access.privateGroupLink,
+    });
+  } catch (error) {
+    console.error("Could not check webinar access", error);
     return response({ error: "Could not check webinar access" }, 500);
   }
-
-  if (!registration) {
-    return response({ purchased: false });
-  }
-
-  const webinar = registration.webinars as {
-    title: string;
-    whatsapp_group_url: string | null;
-  };
-  return response({
-    purchased: true,
-    webinar_title: webinar.title,
-    whatsapp_group_url: webinar.whatsapp_group_url,
-  });
 }

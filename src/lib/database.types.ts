@@ -137,12 +137,16 @@ export type Database = {
       webinar_registrations: {
         Row: {
           amount_paise: number | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string
           form_data: Json
           id: string
           paid_at: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
+          registered_at: string
+          registration_type: string
           status: string
           updated_at: string
           user_id: string
@@ -150,12 +154,16 @@ export type Database = {
         }
         Insert: {
           amount_paise?: number | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           form_data?: Json
           id?: string
           paid_at?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
+          registered_at?: string
+          registration_type?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -163,12 +171,16 @@ export type Database = {
         }
         Update: {
           amount_paise?: number | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           form_data?: Json
           id?: string
           paid_at?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
+          registered_at?: string
+          registration_type?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -190,6 +202,11 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           description: string
+          free_registration_enabled: boolean
+          free_registration_ends_at: string | null
+          free_registration_starts_at: string | null
+          free_slot_limit: number
+          free_slots_claimed: number
           id: string
           image_path: string
           is_visible: boolean
@@ -204,6 +221,11 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description: string
+          free_registration_enabled?: boolean
+          free_registration_ends_at?: string | null
+          free_registration_starts_at?: string | null
+          free_slot_limit?: number
+          free_slots_claimed?: number
           id?: string
           image_path: string
           is_visible?: boolean
@@ -218,6 +240,11 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string
+          free_registration_enabled?: boolean
+          free_registration_ends_at?: string | null
+          free_registration_starts_at?: string | null
+          free_slot_limit?: number
+          free_slots_claimed?: number
           id?: string
           image_path?: string
           is_visible?: boolean
@@ -226,6 +253,36 @@ export type Database = {
           title?: string
           updated_at?: string
           whatsapp_group_url?: string | null
+        }
+        Relationships: []
+      }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_email: string
+          changes: Json
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          admin_email: string
+          changes?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          admin_email?: string
+          changes?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
         }
         Relationships: []
       }
@@ -240,10 +297,29 @@ export type Database = {
         }
         Returns: undefined
       }
+      claim_webinar_free_slot: {
+        Args: {
+          target_webinar_id: string
+          target_user_id: string
+          target_email: string
+          target_phone: string
+          target_form_data: Json
+        }
+        Returns: {
+          result_code: string
+          claimed_registration_id: string | null
+          slot_limit: number
+          slots_claimed: number
+        }[]
+      }
       get_webinar_registration_counts: {
         Args: Record<PropertyKey, never>
         Returns: {
+          cancelled_count: number
+          failed_count: number
+          free_count: number
           paid_count: number
+          pending_count: number
           total_count: number
           webinar_id: string
         }[]

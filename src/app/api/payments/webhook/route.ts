@@ -7,6 +7,7 @@ import {
   PAYMENT_CURRENCY,
   verifyHmacSha256,
 } from "@/lib/payment-security";
+import { REGISTRATION_STATUS } from "@/lib/webinar-slots";
 
 export const runtime = "nodejs";
 
@@ -146,12 +147,26 @@ export async function POST(request: Request) {
         return errorResponse("Payment amount mismatch", 409);
       }
 
-      if (registration.status === "paid") {
+      if (registration.status === REGISTRATION_STATUS.paidConfirmed) {
         return registration.razorpay_payment_id === payment.id
           ? NextResponse.json({ received: true })
           : errorResponse("Registration is linked to another payment", 409);
       }
-      if (registration.status !== "pending") {
+      if (
+        registration.status === REGISTRATION_STATUS.freeConfirmed ||
+        registration.status === REGISTRATION_STATUS.cancelled
+      ) {
+        // Terminal state. Retrying cannot change it, so acknowledge the event
+        // and leave the payment for manual reconciliation.
+        console.error("Captured payment for a non-payable webinar registration", {
+          eventId,
+          registrationId: registration.id,
+          status: registration.status,
+          paymentId: payment.id,
+        });
+        return NextResponse.json({ received: true });
+      }
+      if (registration.status !== REGISTRATION_STATUS.paymentPending) {
         return errorResponse("Registration is not awaiting payment", 409);
       }
 
@@ -159,14 +174,15 @@ export async function POST(request: Request) {
       const { data: updated, error: updateError } = await supabase
         .from("webinar_registrations")
         .update({
-          status: "paid",
+          status: REGISTRATION_STATUS.paidConfirmed,
+          registration_type: "PAID",
           amount_paise: expectedWebinarAmount,
           razorpay_payment_id: payment.id,
           paid_at: now,
           updated_at: now,
         })
         .eq("id", registration.id)
-        .eq("status", "pending")
+        .eq("status", REGISTRATION_STATUS.paymentPending)
         .is("razorpay_payment_id", null)
         .select("id")
         .maybeSingle();
@@ -178,7 +194,10 @@ export async function POST(request: Request) {
           paymentId: payment.id,
           error: updateError.message,
         });
-        return errorResponse("Could not save payment confirmation", 500);
+        // A duplicate confirmed registration cannot be resolved by a retry.
+        return updateError.code === "23505"
+          ? NextResponse.json({ received: true })
+          : errorResponse("Could not save payment confirmation", 500);
       }
 
       if (!updated) {
@@ -188,7 +207,7 @@ export async function POST(request: Request) {
           .eq("id", registration.id)
           .single();
         if (
-          reconciled?.status !== "paid" ||
+          reconciled?.status !== REGISTRATION_STATUS.paidConfirmed ||
           reconciled.razorpay_payment_id !== payment.id
         ) {
           return errorResponse("Payment confirmation conflict", 409);

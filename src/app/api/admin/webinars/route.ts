@@ -9,12 +9,15 @@ import {
 } from "@/lib/payment-security";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { parseIndiaDateTimeLocal } from "@/lib/india-time";
+import { diffFields, recordAdminAction } from "@/lib/admin-audit";
+import { parseFreeRegistrationSettings } from "@/lib/webinar-admin-settings";
+import { REGISTRATION_STATUS } from "@/lib/webinar-slots";
 
 export const runtime = "nodejs";
 
 const BUCKET = "webinar-posters";
 const REGISTRATION_SELECT =
-  "id, webinar_id, status, amount_paise, form_data, paid_at, created_at, razorpay_payment_id";
+  "id, webinar_id, status, registration_type, amount_paise, form_data, paid_at, registered_at, created_at, razorpay_payment_id";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -42,6 +45,10 @@ async function loadRegistrationCounts(
         {
           total: Number(row.total_count),
           paid: Number(row.paid_count),
+          free: Number(row.free_count ?? 0),
+          pending: Number(row.pending_count ?? 0),
+          failed: Number(row.failed_count ?? 0),
+          cancelled: Number(row.cancelled_count ?? 0),
         },
       ])
     );
@@ -54,25 +61,33 @@ async function loadRegistrationCounts(
   );
   const countRows = await Promise.all(
     webinarIds.map(async (webinarId) => {
-      const [totalResult, paidResult] = await Promise.all([
-        supabase
-          .from("webinar_registrations")
-          .select("id", { count: "exact", head: true })
-          .eq("webinar_id", webinarId),
-        supabase
+      const countByStatus = async (status: string) => {
+        const { count, error: countError } = await supabase
           .from("webinar_registrations")
           .select("id", { count: "exact", head: true })
           .eq("webinar_id", webinarId)
-          .eq("status", "paid"),
+          .eq("status", status);
+        if (countError) throw countError;
+        return count ?? 0;
+      };
+
+      const [paid, free, pending, failed, cancelled] = await Promise.all([
+        countByStatus(REGISTRATION_STATUS.paidConfirmed),
+        countByStatus(REGISTRATION_STATUS.freeConfirmed),
+        countByStatus(REGISTRATION_STATUS.paymentPending),
+        countByStatus(REGISTRATION_STATUS.paymentFailed),
+        countByStatus(REGISTRATION_STATUS.cancelled),
       ]);
-      if (totalResult.error || paidResult.error) {
-        throw totalResult.error ?? paidResult.error;
-      }
+
       return [
         webinarId,
         {
-          total: totalResult.count ?? 0,
-          paid: paidResult.count ?? 0,
+          total: paid + free + pending,
+          paid,
+          free,
+          pending,
+          failed,
+          cancelled,
         },
       ] as const;
     })
@@ -270,14 +285,25 @@ export async function GET(request: Request) {
     return errorResponse("Could not load webinars. Please retry.", 503);
   }
 
-  const withUrls = (webinars ?? []).map((webinar) => ({
-    ...webinar,
-    registration_total: registrationCounts.get(webinar.id)?.total ?? 0,
-    paid_registration_count: registrationCounts.get(webinar.id)?.paid ?? 0,
-    image_url: supabase.storage
-      .from(BUCKET)
-      .getPublicUrl(webinar.image_path).data.publicUrl,
-  }));
+  const withUrls = (webinars ?? []).map((webinar) => {
+    const counts = registrationCounts.get(webinar.id);
+    return {
+      ...webinar,
+      registration_total: counts?.total ?? 0,
+      paid_registration_count: counts?.paid ?? 0,
+      free_registration_count: counts?.free ?? 0,
+      pending_registration_count: counts?.pending ?? 0,
+      failed_registration_count: counts?.failed ?? 0,
+      cancelled_registration_count: counts?.cancelled ?? 0,
+      free_slots_remaining: Math.max(
+        0,
+        (webinar.free_slot_limit ?? 0) - (webinar.free_slots_claimed ?? 0)
+      ),
+      image_url: supabase.storage
+        .from(BUCKET)
+        .getPublicUrl(webinar.image_path).data.publicUrl,
+    };
+  });
   const total = registrationTotal ?? 0;
 
   return NextResponse.json(
@@ -299,7 +325,8 @@ export async function POST(request: Request) {
   if (!isTrustedBrowserRequest(request)) {
     return errorResponse("Cross-site request rejected", 403);
   }
-  if (!(await getAdminFromRequest(request))) {
+  const admin = await getAdminFromRequest(request);
+  if (!admin?.email) {
     return errorResponse("Forbidden", 403);
   }
 
@@ -339,6 +366,11 @@ export async function POST(request: Request) {
   if (!hasUploadedPoster && !hasCopySource) {
     return errorResponse("Choose a valid poster image", 400);
   }
+
+  const freeSettings = parseFreeRegistrationSettings((key) =>
+    formData.get(key)
+  );
+  if (!freeSettings.ok) return errorResponse(freeSettings.error, 400);
 
   let startsAt: string | null = null;
   if (typeof startsAtValue === "string" && startsAtValue.trim()) {
@@ -403,6 +435,7 @@ export async function POST(request: Request) {
       whatsapp_group_url: whatsappGroupUrl,
       starts_at: startsAt,
       is_visible: false,
+      ...freeSettings.settings,
     })
     .select()
     .single();
@@ -422,6 +455,19 @@ export async function POST(request: Request) {
   }
 
   invalidateActiveWebinarCache();
+  await recordAdminAction({
+    supabase,
+    adminEmail: admin.email,
+    action: "webinar.create",
+    entityType: "webinar",
+    entityId: data.id,
+    changes: {
+      title,
+      price_paise: Math.round(priceRupees * 100),
+      copied_from: hasCopySource ? copySourceId : null,
+      ...freeSettings.settings,
+    },
+  });
   return NextResponse.json(
     { webinar: { ...data, is_visible: true } },
     { status: 201 }
@@ -432,7 +478,8 @@ export async function PATCH(request: Request) {
   if (!isTrustedBrowserRequest(request)) {
     return errorResponse("Cross-site request rejected", 403);
   }
-  if (!(await getAdminFromRequest(request))) {
+  const admin = await getAdminFromRequest(request);
+  if (!admin?.email) {
     return errorResponse("Forbidden", 403);
   }
 
@@ -472,6 +519,14 @@ export async function PATCH(request: Request) {
     .maybeSingle();
   if (error || !data) return errorResponse("Webinar not found", 404);
   invalidateActiveWebinarCache();
+  await recordAdminAction({
+    supabase,
+    adminEmail: admin.email,
+    action: "webinar.mark_completed",
+    entityType: "webinar",
+    entityId: body.id,
+    changes: { is_visible: { from: true, to: false } },
+  });
   return NextResponse.json({ webinar: data });
 }
 
@@ -479,7 +534,8 @@ export async function PUT(request: Request) {
   if (!isTrustedBrowserRequest(request)) {
     return errorResponse("Cross-site request rejected", 403);
   }
-  if (!(await getAdminFromRequest(request))) {
+  const admin = await getAdminFromRequest(request);
+  if (!admin?.email) {
     return errorResponse("Forbidden", 403);
   }
 
@@ -533,15 +589,29 @@ export async function PUT(request: Request) {
     }
   }
 
+  const freeSettings = parseFreeRegistrationSettings((key) =>
+    formData.get(key)
+  );
+  if (!freeSettings.ok) return errorResponse(freeSettings.error, 400);
+
   const supabase = getSupabaseAdmin();
   const { data: existing } = await supabase
     .from("webinars")
-    .select("image_path")
+    .select(
+      "image_path, title, price_paise, whatsapp_group_url, starts_at, free_registration_enabled, free_slot_limit, free_slots_claimed, free_registration_starts_at, free_registration_ends_at"
+    )
     .eq("id", id)
     .eq("is_visible", true)
     .is("deleted_at", null)
     .maybeSingle();
   if (!existing) return errorResponse("Webinar not found", 404);
+
+  if (freeSettings.settings.free_slot_limit < existing.free_slots_claimed) {
+    return errorResponse(
+      `The free slot limit cannot go below the ${existing.free_slots_claimed} free registrations already confirmed`,
+      409
+    );
+  }
 
   let replacementPath: string | null = null;
   if (source instanceof File && source.size > 0) {
@@ -580,6 +650,7 @@ export async function PUT(request: Request) {
       starts_at: startsAt,
       image_path: replacementPath ?? existing.image_path,
       updated_at: new Date().toISOString(),
+      ...freeSettings.settings,
     })
     .eq("id", id)
     .eq("is_visible", true)
@@ -590,6 +661,13 @@ export async function PUT(request: Request) {
   if (error) {
     if (replacementPath) {
       await supabase.storage.from(BUCKET).remove([replacementPath]);
+    }
+    // The database refuses a free-slot limit below the slots already claimed.
+    if (error.code === "23514") {
+      return errorResponse(
+        "The free slot limit cannot go below the free registrations already confirmed",
+        409
+      );
     }
     return errorResponse("Could not update the webinar", 500);
   }
@@ -604,6 +682,32 @@ export async function PUT(request: Request) {
   }
 
   invalidateActiveWebinarCache();
+  await recordAdminAction({
+    supabase,
+    adminEmail: admin.email,
+    action: "webinar.update",
+    entityType: "webinar",
+    entityId: id,
+    changes: diffFields(
+      {
+        title: existing.title,
+        price_paise: existing.price_paise,
+        whatsapp_group_url: existing.whatsapp_group_url,
+        starts_at: existing.starts_at,
+        free_registration_enabled: existing.free_registration_enabled,
+        free_slot_limit: existing.free_slot_limit,
+        free_registration_starts_at: existing.free_registration_starts_at,
+        free_registration_ends_at: existing.free_registration_ends_at,
+      },
+      {
+        title,
+        price_paise: Math.round(priceRupees * 100),
+        whatsapp_group_url: whatsappGroupUrl,
+        starts_at: startsAt,
+        ...freeSettings.settings,
+      }
+    ),
+  });
   return NextResponse.json({ webinar: data });
 }
 
@@ -611,7 +715,8 @@ export async function DELETE(request: Request) {
   if (!isTrustedBrowserRequest(request)) {
     return errorResponse("Cross-site request rejected", 403);
   }
-  if (!(await getAdminFromRequest(request))) {
+  const admin = await getAdminFromRequest(request);
+  if (!admin?.email) {
     return errorResponse("Forbidden", 403);
   }
 
@@ -635,5 +740,13 @@ export async function DELETE(request: Request) {
   if (!webinar) return errorResponse("Webinar not found", 404);
 
   invalidateActiveWebinarCache();
+  await recordAdminAction({
+    supabase,
+    adminEmail: admin.email,
+    action: "webinar.remove",
+    entityType: "webinar",
+    entityId: id,
+    changes: { deleted_at: deletedAt },
+  });
   return NextResponse.json({ success: true, deleted_at: deletedAt });
 }

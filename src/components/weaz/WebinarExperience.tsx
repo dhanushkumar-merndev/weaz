@@ -11,8 +11,11 @@ import {
   CreditCard,
   ExternalLink,
   Loader2,
+  Lock,
   MessageCircle,
+  ShieldCheck,
   Sparkles,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +38,22 @@ import {
 import { formatIndiaDateTime } from "@/lib/india-time";
 import { useActiveWebinar } from "@/hooks/useActiveWebinar";
 import {
+  useRefreshWebinarAvailability,
+  useWebinarAvailability,
+} from "@/hooks/useWebinarAvailability";
+import {
+  formatRupees,
+  getAnnouncementMessage,
+  getCtaHelperText,
+  getRegistrationCtaText,
+  type WebinarAvailability,
+} from "@/lib/webinar-slots";
+import {
+  WebinarSlotBadge,
+  WebinarSlotMeter,
+} from "@/components/weaz/WebinarSlotMeter";
+import { WebinarAnnouncementMarquee } from "@/components/weaz/WebinarAnnouncementMarquee";
+import {
   trackMetaPurchase,
   trackMetaWebinarCheckout,
   trackMetaWebinarView,
@@ -42,12 +61,9 @@ import {
 
 type ModalView = "promo" | "form" | "access" | "success" | null;
 
-function formatPrice(paise: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(paise / 100);
+interface RegistrationSummary {
+  registrationType: "FREE" | "PAID";
+  privateGroupLink: string | null;
 }
 
 export function WebinarExperience() {
@@ -65,10 +81,25 @@ export function WebinarExperience() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
+  const [slotLostOpen, setSlotLostOpen] = useState(false);
+  const [slotLostMessage, setSlotLostMessage] = useState("");
   const [whatsAppGroupUrl, setWhatsAppGroupUrl] = useState<string | null>(null);
+  const [summary, setSummary] = useState<RegistrationSummary | null>(null);
+  // The entered details survive a lost free slot so nothing is retyped.
   const [form, setForm] = useState({ name: "", phone: "" });
   const excluded = pathname.startsWith("/admin") || pathname.startsWith("/auth");
   const { data: webinar = null } = useActiveWebinar(!excluded);
+
+  const { data: availability = null } = useWebinarAvailability(webinar?.id, {
+    enabled: !excluded,
+    interactive: view === "form" || view === "promo",
+  });
+  const refreshAvailability = useRefreshWebinarAvailability();
+
+  const freeAvailable = availability?.freeRegistrationAvailable === true;
+  const priceLabel = formatRupees(
+    availability?.pricePaise ?? webinar?.price_paise ?? 0
+  );
 
   useEffect(() => {
     if (excluded) return;
@@ -99,11 +130,7 @@ export function WebinarExperience() {
 
     const elapsed = Date.now() - (startedAt.current ?? Date.now());
     const timer = window.setTimeout(() => {
-      if (
-        view === null &&
-        !enrollmentModalOpen &&
-        !promoHandled.current
-      ) {
+      if (view === null && !enrollmentModalOpen && !promoHandled.current) {
         promoHandled.current = true;
         setView("promo");
       }
@@ -136,7 +163,7 @@ export function WebinarExperience() {
     };
   }, [barVisible, excluded, view, webinar]);
 
-  const checkPurchasedAccess = useCallback(async () => {
+  const checkConfirmedAccess = useCallback(async () => {
     if (!user || !webinar) return false;
     try {
       const response = await fetch(
@@ -144,8 +171,13 @@ export function WebinarExperience() {
         { cache: "no-store" }
       );
       const result = await response.json();
-      if (response.ok && result.purchased) {
+      if (response.ok && result.registered) {
         setWhatsAppGroupUrl(result.whatsapp_group_url ?? null);
+        setSummary({
+          registrationType:
+            result.registration_type === "FREE" ? "FREE" : "PAID",
+          privateGroupLink: result.whatsapp_group_url ?? null,
+        });
         return true;
       }
     } catch {
@@ -172,13 +204,14 @@ export function WebinarExperience() {
     }));
     setView("form");
     void loadRazorpayScript();
+    void refreshAvailability(webinar.id);
     if (user) {
       setCheckingAccess(true);
-      const purchased = await checkPurchasedAccess();
+      const registered = await checkConfirmedAccess();
       setCheckingAccess(false);
-      if (purchased) setView("access");
+      if (registered) setView("access");
     }
-  }, [checkPurchasedAccess, user, webinar]);
+  }, [checkConfirmedAccess, refreshAvailability, user, webinar]);
 
   useEffect(() => {
     const handleOpenRequest = () => {
@@ -193,58 +226,35 @@ export function WebinarExperience() {
     if (!open && !submitting) setView(null);
   };
 
-  const handlePay = async () => {
-    if (!webinar || !user?.email) return;
-    const digits = form.phone.replace(/\D/g, "");
-    const normalized =
-      digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-    if (form.name.trim().length < 2 || normalized.length !== 10) {
-      toast.error("Enter your name and a valid 10-digit phone number");
-      return;
-    }
+  const digits = form.phone.replace(/\D/g, "");
+  const normalizedPhone =
+    digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  const formValid =
+    form.name.trim().length >= 2 && normalizedPhone.length === 10;
 
-    trackMetaWebinarCheckout({
-      amountPaise: webinar.price_paise,
-      contentId: webinar.id,
-      contentName: webinar.title,
-    });
+  const startPaidCheckout = useCallback(
+    async (registrationId: string) => {
+      if (!webinar || !user?.email) return;
 
-    setSubmitting(true);
-    try {
       const loaded = await loadRazorpayScript();
       if (!loaded || !window.Razorpay) {
         throw new Error("Secure checkout could not load. Please try again.");
       }
 
-      const registrationResponse = await fetch("/api/webinars/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          webinar_id: webinar.id,
-          name: form.name.trim(),
-          phone: normalized,
-        }),
+      trackMetaWebinarCheckout({
+        amountPaise: availability?.pricePaise ?? webinar.price_paise,
+        contentId: webinar.id,
+        contentName: webinar.title,
       });
-      const registrationResult = await registrationResponse.json();
-      if (!registrationResponse.ok) {
-        if (
-          registrationResponse.status === 409 &&
-          (await checkPurchasedAccess())
-        ) {
-          setSubmitting(false);
-          setView("access");
-          return;
-        }
-        throw new Error(registrationResult.error || "Could not register");
-      }
 
-      const orderResponse = await fetch("/api/webinars/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          registration_id: registrationResult.registration.id,
-        }),
-      });
+      const orderResponse = await fetch(
+        `/api/webinars/${encodeURIComponent(webinar.id)}/create-payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registration_id: registrationId }),
+        }
+      );
       const order = await orderResponse.json();
       if (!orderResponse.ok) {
         throw new Error(order.error || "Could not create payment");
@@ -260,7 +270,7 @@ export function WebinarExperience() {
         prefill: {
           name: form.name.trim(),
           email: user.email,
-          contact: normalized,
+          contact: normalizedPhone,
         },
         theme: { color: "#9B59D0" },
         modal: {
@@ -290,7 +300,12 @@ export function WebinarExperience() {
             contentName: webinar.title,
             eventId: result.razorpay_order_id,
           });
-          await checkPurchasedAccess();
+          await checkConfirmedAccess();
+          void refreshAvailability(webinar.id);
+          setSummary((current) => ({
+            registrationType: "PAID",
+            privateGroupLink: current?.privateGroupLink ?? null,
+          }));
           setSubmitting(false);
           setView("success");
         },
@@ -302,37 +317,132 @@ export function WebinarExperience() {
         setSubmitting(false);
       });
       checkout.open();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
-      setSubmitting(false);
-    }
-  };
+    },
+    [
+      availability?.pricePaise,
+      checkConfirmedAccess,
+      form.name,
+      normalizedPhone,
+      refreshAvailability,
+      user,
+      webinar,
+    ]
+  );
+
+  /**
+   * `acceptPaid` only tells the server that the visitor agreed to pay. The
+   * server always recalculates the price and whether a free slot is available.
+   */
+  const handleRegister = useCallback(
+    async (acceptPaid: boolean) => {
+      if (!webinar || !user?.email) return;
+      if (!formValid) {
+        toast.error("Enter your name and a valid 10-digit phone number");
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        const response = await fetch(
+          `/api/webinars/${encodeURIComponent(webinar.id)}/register`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: form.name.trim(),
+              phone: normalizedPhone,
+              accept_paid: acceptPaid,
+            }),
+          }
+        );
+        const result = await response.json();
+
+        // The last free slot went to someone else. Keep the entered details
+        // and offer payment instead.
+        if (response.status === 409 && result.paymentRequired) {
+          void refreshAvailability(webinar.id);
+          setSlotLostMessage(
+            result.code === "FREE_SLOTS_EXHAUSTED"
+              ? "Someone completed their registration moments before you. You can still join the webinar by completing the payment."
+              : result.message ||
+                  "Free registration is closed. You can still join by completing the payment."
+          );
+          setSlotLostOpen(true);
+          setSubmitting(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(result.error || "Could not register");
+        }
+
+        if (
+          result.status === "FREE_CONFIRMED" ||
+          result.status === "PAID_CONFIRMED"
+        ) {
+          void refreshAvailability(webinar.id);
+          setWhatsAppGroupUrl(result.privateGroupLink ?? null);
+          setSummary({
+            registrationType:
+              result.registrationType === "FREE" ? "FREE" : "PAID",
+            privateGroupLink: result.privateGroupLink ?? null,
+          });
+          setSubmitting(false);
+          setView(result.status === "FREE_CONFIRMED" ? "success" : "access");
+          return;
+        }
+
+        await startPaidCheckout(result.registrationId);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Something went wrong"
+        );
+        setSubmitting(false);
+      }
+    },
+    [
+      form.name,
+      formValid,
+      normalizedPhone,
+      refreshAvailability,
+      startPaidCheckout,
+      user,
+      webinar,
+    ]
+  );
 
   if (!webinar || excluded) return null;
+
+  const announcementMessage = getAnnouncementMessage(
+    availability,
+    webinar.announcement_text
+  );
+  const ctaLabel = availability
+    ? getRegistrationCtaText(availability)
+    : "Register now";
 
   return (
     <>
       {barVisible && view === null && (
         <div
           ref={barRef}
-          className="fixed inset-x-0 top-0 z-[60] border-b border-[#FBBF24]/20 bg-[#17121f]/95 px-10 py-2 text-center shadow-lg shadow-black/20 backdrop-blur-xl"
+          className="fixed inset-x-0 top-0 z-[60] border-b border-[#FBBF24]/20 bg-[#17121f]/95 shadow-lg shadow-black/20 backdrop-blur-xl"
           data-testid="webinar-announcement"
         >
           <button
             type="button"
             onClick={openForm}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 text-xs font-semibold text-white sm:text-sm"
+            className="block w-full cursor-pointer overflow-hidden py-2 pl-4 pr-10 text-xs font-semibold text-white sm:text-sm"
           >
-            <Sparkles size={14} className="shrink-0 text-[#FBBF24]" />
-            <span>{webinar.announcement_text}</span>
-            <span className="hidden text-[#FBBF24] underline underline-offset-4 sm:inline">
-              Register now
-            </span>
+            <WebinarAnnouncementMarquee
+              message={announcementMessage}
+              actionLabel="Register now"
+            />
           </button>
           <button
             type="button"
             onClick={() => setBarVisible(false)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
             aria-label="Dismiss webinar announcement"
           >
             <X size={15} />
@@ -364,8 +474,14 @@ export function WebinarExperience() {
                 />
               </div>
               <div className="relative flex flex-1 flex-col px-5 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] pt-3 sm:justify-center sm:p-9">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.26em] text-[#FBBF24] sm:mb-3 sm:text-xs">
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.26em] text-[#FBBF24] sm:mb-3 sm:text-xs">
                   Live webinar
+                  {availability && (
+                    <WebinarSlotBadge
+                      availability={availability}
+                      className="tracking-[0.14em]"
+                    />
+                  )}
                 </div>
                 <DialogTitle className="max-w-md font-display text-[1.75rem] font-black leading-[1.05] sm:text-3xl">
                   {webinar.title}
@@ -381,8 +497,23 @@ export function WebinarExperience() {
                     {formatIndiaDateTime(webinar.starts_at)}
                   </div>
                 )}
-                <div className="mt-3.5 font-display text-[1.75rem] font-black text-white sm:mt-6 sm:text-3xl">
-                  {formatPrice(webinar.price_paise)}
+                {availability && (
+                  <WebinarSlotMeter
+                    availability={availability}
+                    className="mt-4"
+                  />
+                )}
+                <div className="mt-3.5 font-display text-[1.75rem] font-black text-white sm:mt-5 sm:text-3xl">
+                  {freeAvailable ? (
+                    <span className="text-emerald-300">
+                      Free
+                      <span className="ml-2 align-middle text-base font-bold text-white/35 line-through">
+                        {priceLabel}
+                      </span>
+                    </span>
+                  ) : (
+                    priceLabel
+                  )}
                 </div>
                 <ShineButton
                   type="button"
@@ -390,7 +521,7 @@ export function WebinarExperience() {
                   variant="gold"
                   className="mt-3.5 min-h-12 w-full !px-6 !py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171021] sm:mt-auto sm:!py-3.5"
                 >
-                  Reserve my seat
+                  {freeAvailable ? "Claim my free seat" : "Reserve my seat"}
                   <ArrowRight size={18} />
                 </ShineButton>
               </div>
@@ -407,9 +538,32 @@ export function WebinarExperience() {
                   {webinar.title}
                 </DialogTitle>
                 <DialogDescription className="text-white/55">
-                  Enter your details and pay securely with Razorpay.
+                  {freeAvailable
+                    ? "Free seats are limited and confirmed in the order they arrive."
+                    : "Enter your details and pay securely with Razorpay."}
                 </DialogDescription>
               </DialogHeader>
+
+              <div className="mt-3 space-y-1.5 text-sm text-white/60">
+                {webinar.starts_at && (
+                  <div className="flex items-center gap-2">
+                    <CalendarDays
+                      size={14}
+                      className="shrink-0 text-[#C47CFF]"
+                    />
+                    {formatIndiaDateTime(webinar.starts_at)}
+                  </div>
+                )}
+                <div className="flex items-start gap-2">
+                  <Users size={14} className="mt-0.5 shrink-0 text-[#C47CFF]" />
+                  Hosted live by WEAZ TECH mentors from Google, Microsoft,
+                  Amazon and Meta
+                </div>
+              </div>
+
+              {availability && (
+                <WebinarSlotMeter availability={availability} className="mt-4" />
+              )}
 
               {checkingAccess ? (
                 <div className="flex items-center justify-center gap-3 py-12 text-sm text-white/55">
@@ -440,7 +594,7 @@ export function WebinarExperience() {
                   </button>
                 </div>
               ) : (
-                <div className="mt-6 space-y-4">
+                <div className="mt-5 space-y-4">
                   <div>
                     <Label className="text-xs uppercase tracking-widest text-white/60">
                       Full name *
@@ -475,19 +629,27 @@ export function WebinarExperience() {
                     />
                   </div>
                   <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/25 p-4">
-                    <span className="text-sm text-white/60">Amount payable</span>
+                    <span className="text-sm text-white/60">
+                      {freeAvailable ? "You pay" : "Amount payable"}
+                    </span>
                     <span className="font-display text-xl font-black">
-                      {formatPrice(webinar.price_paise)}
+                      {freeAvailable ? (
+                        <span className="text-emerald-300">
+                          ₹0
+                          <span className="ml-2 text-sm font-bold text-white/35 line-through">
+                            {priceLabel}
+                          </span>
+                        </span>
+                      ) : (
+                        priceLabel
+                      )}
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={handlePay}
-                    disabled={
-                      submitting ||
-                      form.name.trim().length < 2 ||
-                      form.phone.replace(/\D/g, "").length < 10
-                    }
+                    data-testid="webinar-register-cta"
+                    onClick={() => void handleRegister(!freeAvailable)}
+                    disabled={submitting || !formValid}
                     className="pill-gold inline-flex w-full cursor-pointer items-center justify-center gap-2 py-3.5 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {submitting ? (
@@ -497,11 +659,30 @@ export function WebinarExperience() {
                       </>
                     ) : (
                       <>
-                        <CreditCard size={16} />
-                        Pay {formatPrice(webinar.price_paise)}
+                        {freeAvailable ? (
+                          <Sparkles size={16} />
+                        ) : (
+                          <CreditCard size={16} />
+                        )}
+                        {ctaLabel}
                       </>
                     )}
                   </button>
+                  {availability && (
+                    <p
+                      data-testid="webinar-cta-helper"
+                      className="text-center text-xs font-semibold text-white/55"
+                    >
+                      {getCtaHelperText(availability)}
+                    </p>
+                  )}
+                  {availability && !availability.freeRegistrationAvailable && (
+                    <p className="flex items-center justify-center gap-2 text-center text-xs text-white/40">
+                      <ShieldCheck size={13} className="shrink-0" />
+                      Secure payment by Razorpay. Cards, UPI and net banking
+                      supported.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -514,11 +695,12 @@ export function WebinarExperience() {
                 className="mx-auto mb-5 text-emerald-400"
               />
               <DialogTitle className="font-display text-3xl font-black">
-                You purchased this webinar
+                You are registered
               </DialogTitle>
               <DialogDescription className="mx-auto mt-3 max-w-sm text-white/55">
-                Your registration for {webinar.title} is active. Join the
-                private WhatsApp group for webinar updates and the joining link.
+                Your {summary?.registrationType === "FREE" ? "free " : ""}
+                registration for {webinar.title} is confirmed. Join the private
+                WhatsApp group for webinar updates and the joining link.
               </DialogDescription>
               {whatsAppGroupUrl ? (
                 <a
@@ -546,11 +728,14 @@ export function WebinarExperience() {
                 className="mx-auto mb-5 text-emerald-400"
               />
               <DialogTitle className="font-display text-3xl font-black">
-                You&apos;re registered
+                {summary?.registrationType === "FREE"
+                  ? "Your free seat is confirmed"
+                  : "You're registered"}
               </DialogTitle>
               <DialogDescription className="mx-auto mt-3 max-w-sm text-white/55">
-                Your payment for {webinar.title} is confirmed. We&apos;ll use
-                your account email for webinar updates.
+                {summary?.registrationType === "FREE"
+                  ? `You claimed one of the free seats for ${webinar.title}. We'll use your account email for webinar updates.`
+                  : `Your payment for ${webinar.title} is confirmed. We'll use your account email for webinar updates.`}
               </DialogDescription>
               <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 {whatsAppGroupUrl && (
@@ -576,6 +761,88 @@ export function WebinarExperience() {
           )}
         </DialogContent>
       </Dialog>
+
+      <SlotLostDialog
+        open={slotLostOpen}
+        message={slotLostMessage}
+        priceLabel={priceLabel}
+        submitting={submitting}
+        availability={availability}
+        onCancel={() => setSlotLostOpen(false)}
+        onContinue={() => {
+          setSlotLostOpen(false);
+          void handleRegister(true);
+        }}
+      />
     </>
+  );
+}
+
+/**
+ * Shown when the final free slot is taken between opening the form and
+ * submitting it. The entered details stay in the form behind this dialog.
+ */
+function SlotLostDialog({
+  open,
+  message,
+  priceLabel,
+  submitting,
+  availability,
+  onCancel,
+  onContinue,
+}: {
+  open: boolean;
+  message: string;
+  priceLabel: string;
+  submitting: boolean;
+  availability: WebinarAvailability | null;
+  onCancel: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
+      <DialogContent
+        data-testid="webinar-slot-lost"
+        className="!left-1/2 !top-1/2 !w-[calc(100%_-_2rem)] !max-w-md !translate-x-[-50%] !translate-y-[-50%] rounded-2xl border border-white/10 bg-[#171021] p-6 text-white shadow-2xl sm:p-7"
+      >
+        <DialogHeader>
+          <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-[#FB923C]/15 text-[#FDBA74]">
+            <Lock size={22} />
+          </span>
+          <DialogTitle className="text-center font-display text-xl font-black sm:text-2xl">
+            Oops! The final free slot was just claimed.
+          </DialogTitle>
+          <DialogDescription className="text-center text-sm leading-6 text-white/60">
+            {message}
+          </DialogDescription>
+        </DialogHeader>
+
+        {availability && (
+          <p className="mt-1 text-center text-xs text-white/40">
+            {availability.freeSlotsClaimed} of {availability.freeSlotLimit} free
+            slots claimed. Your details are saved — nothing to type again.
+          </p>
+        )}
+
+        <div className="mt-5 flex flex-col gap-2.5 sm:flex-row-reverse">
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={submitting}
+            className="pill-gold inline-flex flex-1 cursor-pointer items-center justify-center gap-2 py-3 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <CreditCard size={16} />
+            Continue with payment ({priceLabel})
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 cursor-pointer rounded-full border border-white/12 px-5 py-3 text-sm font-semibold text-white/65 transition hover:border-white/25 hover:text-white"
+          >
+            Cancel
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

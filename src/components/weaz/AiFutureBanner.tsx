@@ -7,6 +7,9 @@ import { ArrowRight, CalendarDays, Sparkles } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { ShineButton } from "@/components/ui/ShineButton";
 import { useActiveWebinar } from "@/hooks/useActiveWebinar";
+import { useWebinarAvailability } from "@/hooks/useWebinarAvailability";
+import { WebinarSlotMeter, WebinarSlotBadge } from "@/components/weaz/WebinarSlotMeter";
+import { getRegistrationCtaText } from "@/lib/webinar-slots";
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 25 },
@@ -109,6 +112,9 @@ function WebinarCountdown({ startsAt }: { startsAt: string }) {
 
 export function AiFutureBanner() {
   const { data: activeWebinar = null } = useActiveWebinar();
+  const { data: availability = null } = useWebinarAvailability(
+    activeWebinar?.id
+  );
 
   return (
     <section
@@ -176,12 +182,27 @@ export function AiFutureBanner() {
           </motion.div>
         )}
 
+        {activeWebinar && availability && (
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+            className="mt-7 flex flex-col items-center gap-4"
+          >
+            <WebinarSlotBadge availability={availability} />
+            <WebinarSlotMeter
+              availability={availability}
+              className="w-full max-w-md text-left"
+            />
+          </motion.div>
+        )}
+
         {activeWebinar && (
           <motion.div
             variants={itemVariants}
             initial="hidden"
             animate="visible"
-            className={activeWebinar.starts_at ? "mt-7" : "mt-9"}
+            className="mt-7"
           >
             <ShineButton
               data-testid="ai-future-webinar-btn"
@@ -191,7 +212,9 @@ export function AiFutureBanner() {
               variant="gold"
               className="px-8 py-4 text-base sm:px-10"
             >
-              Register for {activeWebinar.title}
+              {availability
+                ? getRegistrationCtaText(availability)
+                : `Register for ${activeWebinar.title}`}
               <ArrowRight size={18} />
             </ShineButton>
           </motion.div>

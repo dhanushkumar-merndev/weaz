@@ -44,19 +44,63 @@ interface Webinar {
   deleted_at: string | null;
   created_at: string;
   whatsapp_group_url: string | null;
+  free_registration_enabled: boolean;
+  free_slot_limit: number;
+  free_slots_claimed: number;
+  free_slots_remaining: number;
+  free_registration_starts_at: string | null;
+  free_registration_ends_at: string | null;
   registration_total: number;
   paid_registration_count: number;
+  free_registration_count: number;
+  pending_registration_count: number;
+  failed_registration_count: number;
+  cancelled_registration_count: number;
 }
 
 interface Registration {
   id: string;
   webinar_id: string;
   status: string;
+  registration_type: string | null;
   amount_paise: number | null;
   form_data: { name?: string; email?: string; phone?: string };
   paid_at: string | null;
+  registered_at: string | null;
   created_at: string;
   razorpay_payment_id: string | null;
+}
+
+const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  FREE_CONFIRMED: {
+    label: "Free confirmed",
+    className: "bg-emerald-500/10 text-emerald-400",
+  },
+  PAID_CONFIRMED: {
+    label: "Paid",
+    className: "bg-emerald-500/10 text-emerald-400",
+  },
+  PAYMENT_PENDING: {
+    label: "Payment pending",
+    className: "bg-[#FBBF24]/10 text-[#FBBF24]",
+  },
+  PAYMENT_FAILED: {
+    label: "Payment failed",
+    className: "bg-red-400/10 text-red-300",
+  },
+  CANCELLED: {
+    label: "Cancelled",
+    className: "bg-white/5 text-white/40",
+  },
+};
+
+function statusBadge(status: string) {
+  return (
+    STATUS_LABELS[status] ?? {
+      label: status,
+      className: "bg-white/5 text-white/40",
+    }
+  );
 }
 
 interface WebinarResponse {
@@ -122,6 +166,37 @@ async function convertImageToWebp(file: File) {
   }
 }
 
+const STAT_TONES = {
+  success: "text-emerald-400",
+  warning: "text-[#FBBF24]",
+  danger: "text-[#F87171]",
+  muted: "text-white/80",
+} as const;
+
+function Stat({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone: keyof typeof STAT_TONES;
+}) {
+  return (
+    <div className="bg-[#15111D] px-4 py-3">
+      <div className="text-[10px] uppercase tracking-wider text-white/30">
+        {label}
+      </div>
+      <div className={`mt-1 font-display text-lg font-black ${STAT_TONES[tone]}`}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-[11px] leading-4 text-white/30">{hint}</div>
+    </div>
+  );
+}
+
 function escapeSpreadsheetXml(value: unknown) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -155,6 +230,10 @@ export function WebinarAdmin() {
     price_rupees: "",
     starts_at: "",
     whatsapp_group_url: "",
+    free_registration_enabled: false,
+    free_slot_limit: "",
+    free_registration_starts_at: "",
+    free_registration_ends_at: "",
   });
 
   const { data, isLoading, isError, error, isFetching, refetch } =
@@ -223,6 +302,10 @@ export function WebinarAdmin() {
       price_rupees: "",
       starts_at: "",
       whatsapp_group_url: "",
+      free_registration_enabled: false,
+      free_slot_limit: "",
+      free_registration_starts_at: "",
+      free_registration_ends_at: "",
     });
     setPreview(null);
     setSelectedImage(null);
@@ -257,7 +340,9 @@ export function WebinarAdmin() {
     setSaving(true);
     try {
       const body = new FormData();
-      Object.entries(form).forEach(([key, value]) => body.append(key, value));
+      Object.entries(form).forEach(([key, value]) =>
+        body.append(key, String(value))
+      );
       if (editingId) body.append("id", editingId);
       if (copySourceId) body.append("copy_source_id", copySourceId);
       if (image) {
@@ -319,6 +404,14 @@ export function WebinarAdmin() {
       price_rupees: String(webinar.price_paise / 100),
       starts_at: localDate,
       whatsapp_group_url: webinar.whatsapp_group_url ?? "",
+      free_registration_enabled: webinar.free_registration_enabled,
+      free_slot_limit: String(webinar.free_slot_limit ?? 0),
+      free_registration_starts_at: webinar.free_registration_starts_at
+        ? formatIndiaDateTimeLocal(webinar.free_registration_starts_at)
+        : "",
+      free_registration_ends_at: webinar.free_registration_ends_at
+        ? formatIndiaDateTimeLocal(webinar.free_registration_ends_at)
+        : "",
     });
     setPreview(webinar.image_url);
     setSelectedImage(null);
@@ -337,6 +430,11 @@ export function WebinarAdmin() {
       price_rupees: String(webinar.price_paise / 100),
       starts_at: "",
       whatsapp_group_url: "",
+      // A copy starts with a fresh free-slot allocation.
+      free_registration_enabled: webinar.free_registration_enabled,
+      free_slot_limit: String(webinar.free_slot_limit ?? 0),
+      free_registration_starts_at: "",
+      free_registration_ends_at: "",
     });
     setPreview(webinar.image_url);
     setSelectedImage(null);
@@ -437,6 +535,9 @@ export function WebinarAdmin() {
 
   const webinars = data?.webinars ?? [];
   const listedWebinars = webinars.filter((webinar) => !webinar.deleted_at);
+  const editingWebinar = editingId
+    ? (webinars.find((webinar) => webinar.id === editingId) ?? null)
+    : null;
   const virtualRows = registrationVirtualizer.getVirtualItems();
   const virtualPaddingTop =
     virtualRows.length > 0 ? virtualRows[0].start : 0;
@@ -478,6 +579,7 @@ export function WebinarAdmin() {
       "Attendee name",
       "Email",
       "Phone",
+      "Registration type",
       "Status",
       "Amount (INR)",
       "Payment ID",
@@ -495,12 +597,15 @@ export function WebinarAdmin() {
         registration.form_data?.name ?? "",
         registration.form_data?.email ?? "",
         registration.form_data?.phone ?? "",
-        registration.status === "paid" ? "Paid" : "Pending",
+        registration.registration_type ?? "PAID",
+        statusBadge(registration.status).label,
         registration.amount_paise === null
           ? ""
           : (registration.amount_paise / 100).toFixed(2),
         registration.razorpay_payment_id ?? "",
-        new Date(registration.created_at).toLocaleString("en-IN"),
+        new Date(
+          registration.registered_at ?? registration.created_at
+        ).toLocaleString("en-IN"),
         registration.paid_at
           ? new Date(registration.paid_at).toLocaleString("en-IN")
           : "",
@@ -728,6 +833,103 @@ export function WebinarAdmin() {
                 className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white [color-scheme:dark] outline-none focus:border-[#9B59D0]/70"
               />
             </label>
+
+            <fieldset className="space-y-4 rounded-2xl border border-[#9B59D0]/20 bg-[#9B59D0]/[0.05] p-4 sm:col-span-2">
+              <legend className="px-1 text-xs font-bold uppercase tracking-wider text-[#C99BEE]">
+                Free registration
+              </legend>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={form.free_registration_enabled}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      free_registration_enabled: event.target.checked,
+                      free_slot_limit:
+                        event.target.checked && !current.free_slot_limit
+                          ? "20"
+                          : current.free_slot_limit,
+                    }))
+                  }
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#9B59D0]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    Enable free registration
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-5 text-white/40">
+                    The first attendees register free. Everyone after the limit
+                    pays the price above.
+                  </span>
+                </span>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-wider text-white/45">
+                    Number of free slots
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={form.free_slot_limit}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        free_slot_limit: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-[#9B59D0]/70"
+                    placeholder="20"
+                  />
+                  {editingWebinar && (
+                    <span className="block text-xs text-white/35">
+                      {editingWebinar.free_slots_claimed} free{" "}
+                      {editingWebinar.free_slots_claimed === 1
+                        ? "slot has"
+                        : "slots have"}{" "}
+                      already been claimed. The limit cannot go below that.
+                    </span>
+                  )}
+                </label>
+                <div className="hidden sm:block" />
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-wider text-white/45">
+                    Free registration starts (IST, optional)
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={form.free_registration_starts_at}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        free_registration_starts_at: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white [color-scheme:dark] outline-none focus:border-[#9B59D0]/70"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-wider text-white/45">
+                    Free registration ends (IST, optional)
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={form.free_registration_ends_at}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        free_registration_ends_at: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white [color-scheme:dark] outline-none focus:border-[#9B59D0]/70"
+                  />
+                </label>
+              </div>
+            </fieldset>
+
             <div className="flex gap-3 sm:col-span-2">
               <button
                 type="submit"
@@ -859,8 +1061,7 @@ export function WebinarAdmin() {
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <Users size={12} />
-                      {webinar.paid_registration_count} paid /{" "}
-                      {webinar.registration_total} total
+                      {webinar.registration_total} enrolled
                     </span>
                     {webinar.starts_at && (
                       <span className="inline-flex items-center gap-1">
@@ -870,6 +1071,54 @@ export function WebinarAdmin() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-px border-t border-white/[0.05] bg-white/[0.04] sm:grid-cols-4">
+                <Stat
+                  label="Free registrations"
+                  value={
+                    webinar.free_registration_enabled
+                      ? `${webinar.free_registration_count} / ${webinar.free_slot_limit}`
+                      : "Off"
+                  }
+                  hint={
+                    webinar.free_registration_enabled
+                      ? `${webinar.free_slots_remaining} remaining · ${webinar.free_slots_claimed} claimed`
+                      : "Free registration disabled"
+                  }
+                  tone={
+                    !webinar.free_registration_enabled
+                      ? "muted"
+                      : webinar.free_slots_remaining === 0
+                        ? "danger"
+                        : webinar.free_slots_remaining <= 5
+                          ? "warning"
+                          : "success"
+                  }
+                />
+                <Stat
+                  label="Paid registrations"
+                  value={String(webinar.paid_registration_count)}
+                  hint="Confirmed payments"
+                  tone="success"
+                />
+                <Stat
+                  label="Payment pending"
+                  value={String(webinar.pending_registration_count)}
+                  hint="Checkout not completed"
+                  tone={
+                    webinar.pending_registration_count > 0 ? "warning" : "muted"
+                  }
+                />
+                <Stat
+                  label="Total enrolled"
+                  value={String(
+                    webinar.free_registration_count +
+                      webinar.paid_registration_count
+                  )}
+                  hint="Free + paid confirmed"
+                  tone="muted"
+                />
               </div>
               <div className="flex items-center justify-end gap-2 border-t border-white/[0.05] p-3">
                 {webinar.is_visible ? (
@@ -997,6 +1246,7 @@ export function WebinarAdmin() {
                 <th className="px-4 py-3 font-medium">Attendee</th>
                 <th className="px-4 py-3 font-medium">Webinar</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
+                <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Date</th>
               </tr>
@@ -1004,7 +1254,7 @@ export function WebinarAdmin() {
             <tbody>
               {virtualPaddingTop > 0 && (
                 <tr aria-hidden="true">
-                  <td colSpan={5} style={{ height: virtualPaddingTop }} />
+                  <td colSpan={6} style={{ height: virtualPaddingTop }} />
                 </tr>
               )}
               {virtualRows.map((virtualRow) => {
@@ -1041,24 +1291,35 @@ export function WebinarAdmin() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        registration.status === "paid"
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-[#FBBF24]/10 text-[#FBBF24]"
+                      className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                        registration.registration_type === "FREE"
+                          ? "bg-[#9B59D0]/12 text-[#C99BEE]"
+                          : "bg-white/5 text-white/45"
                       }`}
                     >
-                      {registration.status === "paid" ? "Paid" : "Pending"}
+                      {registration.registration_type === "FREE"
+                        ? "Free"
+                        : "Paid"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${statusBadge(registration.status).className}`}
+                    >
+                      {statusBadge(registration.status).label}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-white/40">
-                    {new Date(registration.created_at).toLocaleDateString("en-IN")}
+                    {new Date(
+                      registration.registered_at ?? registration.created_at
+                    ).toLocaleDateString("en-IN")}
                   </td>
                 </tr>
                 );
               })}
               {virtualPaddingBottom > 0 && (
                 <tr aria-hidden="true">
-                  <td colSpan={5} style={{ height: virtualPaddingBottom }} />
+                  <td colSpan={6} style={{ height: virtualPaddingBottom }} />
                 </tr>
               )}
             </tbody>

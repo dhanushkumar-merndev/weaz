@@ -194,6 +194,50 @@ body.has-webinar-announcement main {
   animation-play-state: paused;
 }
 
+/*
+ * Webinar announcement marquee.
+ *
+ * The track is at least as wide as its viewport, so translateX(100%) parks it
+ * just past the right edge and translateX(-100%) carries it fully past the
+ * left edge. Both ends of the keyframe sit at zero opacity, so the loop fades
+ * out and back in instead of snapping.
+ */
+@keyframes webinar-marquee {
+  0% {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-100%, 0, 0);
+    opacity: 0;
+  }
+}
+
+.webinar-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.webinar-marquee-track {
+  display: inline-block;
+  min-width: 100%;
+  white-space: nowrap;
+  animation: webinar-marquee var(--webinar-marquee-duration, 22s) linear infinite;
+  contain: layout paint;
+  will-change: transform, opacity;
+}
+
+.webinar-marquee:hover .webinar-marquee-track,
+.webinar-marquee:focus-within .webinar-marquee-track {
+  animation-play-state: paused;
+}
+
 /* Selection */
 ::selection {
   background: var(--weaz-purple);
@@ -290,5 +334,16 @@ body.has-webinar-announcement main {
 
   .company-marquee-track {
     animation: none !important;
+  }
+
+  /* The announcement stays readable on one line without any movement. */
+  .webinar-marquee-track {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

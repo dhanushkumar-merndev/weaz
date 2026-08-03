@@ -13,14 +13,17 @@ function jsonResponse(body: object, status = 200) {
   });
 }
 
-/**
- * Compatibility endpoint for browser tabs still running the previous paid-only
- * bundle. New clients use POST /api/webinars/:id/register, which also handles
- * free slots. Both share the same server-side registration logic.
- */
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   if (!isTrustedBrowserRequest(request)) {
     return jsonResponse({ error: "Cross-site request rejected" }, 403);
+  }
+
+  const { id } = await context.params;
+  if (!isEnrollmentId(id)) {
+    return jsonResponse({ error: "Invalid webinar id" }, 400);
   }
 
   const user = await getUserFromRequest(request);
@@ -36,14 +39,9 @@ export async function POST(request: Request) {
     return jsonResponse({ error: "Invalid request body" }, 400);
   }
 
-  const webinarId = "webinar_id" in body ? body.webinar_id : null;
   const name = "name" in body ? body.name : null;
   const phone = "phone" in body ? body.phone : null;
-  if (
-    !isEnrollmentId(webinarId) ||
-    typeof name !== "string" ||
-    typeof phone !== "string"
-  ) {
+  if (typeof name !== "string" || typeof phone !== "string") {
     return jsonResponse({ error: "Missing required fields" }, 400);
   }
 
@@ -51,48 +49,53 @@ export async function POST(request: Request) {
     const outcome = await registerForWebinar({
       supabase: getSupabaseAdmin(),
       user,
-      webinarId,
+      webinarId: id,
       name,
       phone,
-      // The legacy client only ever showed a paid call to action.
-      acceptPaid: true,
+      // Consent to pay only. Pricing and free eligibility stay server-side.
+      acceptPaid: "accept_paid" in body && body.accept_paid === true,
     });
 
     switch (outcome.kind) {
       case "CONFIRMED":
-        return outcome.status === "FREE_CONFIRMED"
-          ? jsonResponse({
-              registration: {
-                id: outcome.registrationId,
-                status: outcome.status,
-              },
-              registrationType: outcome.registrationType,
-              status: outcome.status,
-              privateGroupLink: outcome.privateGroupLink,
-            })
-          : jsonResponse(
-              { error: "You are already registered for this webinar" },
-              409
-            );
+        return jsonResponse({
+          success: true,
+          registrationId: outcome.registrationId,
+          registrationType: outcome.registrationType,
+          status: outcome.status,
+          amountPaid: outcome.amountPaise / 100,
+          privateGroupLink: outcome.privateGroupLink,
+          availability: outcome.availability,
+        });
 
       case "PAYMENT_PENDING":
         return jsonResponse({
-          registration: {
-            id: outcome.registrationId,
-            status: "PAYMENT_PENDING",
-          },
+          success: true,
+          registrationId: outcome.registrationId,
           registrationType: "PAID",
           status: "PAYMENT_PENDING",
+          amountDue: outcome.amountPaise / 100,
+          paymentRequired: true,
+          availability: outcome.availability,
         });
 
       case "PAYMENT_REQUIRED":
         return jsonResponse(
-          { error: outcome.message, code: outcome.code, paymentRequired: true },
+          {
+            success: false,
+            code: outcome.code,
+            message: outcome.message,
+            paymentRequired: true,
+            availability: outcome.availability,
+          },
           409
         );
 
       default:
-        return jsonResponse({ error: outcome.message }, outcome.status);
+        return jsonResponse(
+          { error: outcome.message, availability: outcome.availability },
+          outcome.status
+        );
     }
   } catch (error) {
     console.error("Webinar registration failed", error);

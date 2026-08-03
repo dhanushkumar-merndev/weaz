@@ -11,6 +11,7 @@ import {
   PAYMENT_CURRENCY,
   verifyHmacSha256,
 } from "@/lib/payment-security";
+import { REGISTRATION_STATUS } from "@/lib/webinar-slots";
 
 export const runtime = "nodejs";
 
@@ -77,12 +78,16 @@ export async function POST(request: Request) {
       return errorResponse("Invalid payment signature", 400);
     }
 
-    if (registration.status === "paid") {
+    if (registration.status === REGISTRATION_STATUS.paidConfirmed) {
       return registration.razorpay_payment_id === paymentId
-        ? NextResponse.json({ success: true })
+        ? NextResponse.json({
+            success: true,
+            status: REGISTRATION_STATUS.paidConfirmed,
+            registrationType: "PAID",
+          })
         : errorResponse("Registration is linked to another payment", 409);
     }
-    if (registration.status !== "pending") {
+    if (registration.status !== REGISTRATION_STATUS.paymentPending) {
       return errorResponse("Registration is not awaiting payment", 409);
     }
 
@@ -130,18 +135,35 @@ export async function POST(request: Request) {
     const { data: updated, error: updateError } = await supabase
       .from("webinar_registrations")
       .update({
-        status: "paid",
+        status: REGISTRATION_STATUS.paidConfirmed,
+        registration_type: "PAID",
         amount_paise: expectedAmount,
         razorpay_payment_id: paymentId,
         paid_at: now,
         updated_at: now,
       })
       .eq("id", registration.id)
-      .eq("status", "pending")
+      .eq("status", REGISTRATION_STATUS.paymentPending)
       .is("razorpay_payment_id", null)
       .select("id")
       .maybeSingle();
-    if (updateError) return errorResponse("Could not save payment", 500);
+
+    if (updateError) {
+      // A unique-index violation means the same person already holds a
+      // confirmed registration for this webinar; the payment needs a manual
+      // refund rather than a second enrolment.
+      if (updateError.code === "23505") {
+        console.error("Duplicate confirmed webinar registration on payment", {
+          registrationId: registration.id,
+          paymentId,
+        });
+        return errorResponse(
+          "You already hold a confirmed registration for this webinar. Contact support to refund this payment.",
+          409
+        );
+      }
+      return errorResponse("Could not save payment", 500);
+    }
 
     if (!updated) {
       const { data: reconciled } = await supabase
@@ -150,14 +172,18 @@ export async function POST(request: Request) {
         .eq("id", registration.id)
         .single();
       if (
-        reconciled?.status !== "paid" ||
+        reconciled?.status !== REGISTRATION_STATUS.paidConfirmed ||
         reconciled.razorpay_payment_id !== paymentId
       ) {
         return errorResponse("Payment confirmation conflict", 409);
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      status: REGISTRATION_STATUS.paidConfirmed,
+      registrationType: "PAID",
+    });
   } catch (error) {
     console.error("Webinar payment verification failed", error);
     return errorResponse("Unable to verify payment", 502);
