@@ -818,38 +818,61 @@ function SlotLostDialog({
         className="!left-1/2 !top-1/2 !w-[calc(100%_-_2rem)] !max-w-md !translate-x-[-50%] !translate-y-[-50%] rounded-2xl border border-white/10 bg-[#171021] p-6 text-white shadow-2xl sm:p-7"
       >
         <DialogHeader>
-          <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-[#FB923C]/15 text-[#FDBA74]">
-            <Lock size={22} />
+          <span
+            aria-hidden="true"
+            className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[#F97316]/12 text-[#FB923C] ring-1 ring-[#F97316]/30"
+          >
+            <Lock size={24} />
           </span>
-          <DialogTitle className="text-center font-display text-xl font-black sm:text-2xl">
-            Oops! The final free slot was just claimed.
+          <DialogTitle className="text-balance text-center font-display text-[1.35rem] font-black leading-tight sm:text-2xl">
+            The final free slot was just claimed
           </DialogTitle>
-          <DialogDescription className="text-center text-sm leading-6 text-white/60">
+          <DialogDescription className="mx-auto max-w-xs text-center text-sm leading-6 text-white/55">
             {message}
           </DialogDescription>
         </DialogHeader>
 
         {availability && (
-          <p className="mt-1 text-center text-xs text-white/40">
-            {availability.freeSlotsClaimed} of {availability.freeSlotLimit} free
-            slots claimed. Your details are saved — nothing to type again.
-          </p>
+          <div className="mt-5 space-y-2 rounded-xl border border-white/[0.07] bg-black/25 px-4 py-3 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-white/45">Free seats</span>
+              <span className="font-bold text-white/70">
+                {availability.freeSlotsClaimed} of {availability.freeSlotLimit}{" "}
+                claimed
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] pt-2">
+              <span className="text-white/45">Paid entry</span>
+              <span className="font-display text-base font-black text-[#FBBF24]">
+                {priceLabel}
+              </span>
+            </div>
+          </div>
         )}
 
-        <div className="mt-5 flex flex-col gap-2.5 sm:flex-row-reverse">
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-white/35">
+          <ShieldCheck size={12} className="shrink-0" />
+          Your details are saved — nothing to type again
+        </p>
+
+        <div className="mt-5 space-y-2.5">
           <button
             type="button"
             onClick={onContinue}
             disabled={submitting}
-            className="pill-gold inline-flex flex-1 cursor-pointer items-center justify-center gap-2 py-3 disabled:cursor-not-allowed disabled:opacity-50"
+            className="pill-gold inline-flex w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap px-5 py-3.5 text-[0.95rem] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <CreditCard size={16} />
-            Continue with payment ({priceLabel})
+            {submitting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <CreditCard size={16} />
+            )}
+            Continue with payment
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 cursor-pointer rounded-full border border-white/12 px-5 py-3 text-sm font-semibold text-white/65 transition hover:border-white/25 hover:text-white"
+            className="w-full cursor-pointer rounded-full py-2.5 text-sm font-semibold text-white/45 transition hover:text-white/80"
           >
             Cancel
           </button>

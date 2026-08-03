@@ -17,6 +17,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  TriangleAlert,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -324,6 +325,16 @@ export function WebinarAdmin() {
       return;
     }
 
+    const claimed =
+      data?.webinars.find((webinar) => webinar.id === editingId)
+        ?.free_slots_claimed ?? 0;
+    if (claimed > 0 && Number(form.free_slot_limit) < claimed) {
+      toast.error(
+        `The free slot limit cannot go below the ${claimed} seats already confirmed`
+      );
+      return;
+    }
+
     const currentActive = data?.webinars.find(
       (webinar) => webinar.is_visible && !webinar.deleted_at
     );
@@ -538,6 +549,16 @@ export function WebinarAdmin() {
   const editingWebinar = editingId
     ? (webinars.find((webinar) => webinar.id === editingId) ?? null)
     : null;
+
+  // Free seats already handed out can never be taken back, so the limit has a
+  // hard floor. Warn while typing instead of failing on save.
+  const claimedFreeSlots = editingWebinar?.free_slots_claimed ?? 0;
+  const enteredFreeLimit = Number(form.free_slot_limit);
+  const freeLimitBelowClaimed =
+    claimedFreeSlots > 0 &&
+    form.free_slot_limit.trim() !== "" &&
+    Number.isFinite(enteredFreeLimit) &&
+    enteredFreeLimit < claimedFreeSlots;
   const virtualRows = registrationVirtualizer.getVirtualItems();
   const virtualPaddingTop =
     virtualRows.length > 0 ? virtualRows[0].start : 0;
@@ -872,26 +893,44 @@ export function WebinarAdmin() {
                   </span>
                   <input
                     type="number"
-                    min="0"
+                    min={claimedFreeSlots}
                     step="1"
                     value={form.free_slot_limit}
+                    aria-invalid={freeLimitBelowClaimed}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
                         free_slot_limit: event.target.value,
                       }))
                     }
-                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-[#9B59D0]/70"
+                    className={`w-full rounded-xl border bg-black/25 px-3 py-2.5 text-sm text-white outline-none ${
+                      freeLimitBelowClaimed
+                        ? "border-red-400/60 focus:border-red-400"
+                        : "border-white/10 focus:border-[#9B59D0]/70"
+                    }`}
                     placeholder="20"
                   />
-                  {editingWebinar && (
-                    <span className="block text-xs text-white/35">
-                      {editingWebinar.free_slots_claimed} free{" "}
-                      {editingWebinar.free_slots_claimed === 1
-                        ? "slot has"
-                        : "slots have"}{" "}
-                      already been claimed. The limit cannot go below that.
+                  {freeLimitBelowClaimed ? (
+                    <span className="flex items-start gap-1.5 text-xs font-semibold leading-5 text-red-300">
+                      <TriangleAlert size={13} className="mt-0.5 shrink-0" />
+                      <span>
+                        {claimedFreeSlots} free{" "}
+                        {claimedFreeSlots === 1 ? "seat is" : "seats are"}{" "}
+                        already confirmed, so the lowest you can set is{" "}
+                        {claimedFreeSlots}. To stop new free seats, untick
+                        &ldquo;Enable free registration&rdquo; instead — the{" "}
+                        {claimedFreeSlots} already registered keep theirs.
+                      </span>
                     </span>
+                  ) : (
+                    editingWebinar && (
+                      <span className="block text-xs text-white/35">
+                        {claimedFreeSlots} free{" "}
+                        {claimedFreeSlots === 1 ? "seat" : "seats"} claimed so
+                        far. The limit can be raised any time, but not lowered
+                        below {claimedFreeSlots}.
+                      </span>
+                    )
                   )}
                 </label>
                 <div className="hidden sm:block" />
@@ -933,8 +972,8 @@ export function WebinarAdmin() {
             <div className="flex gap-3 sm:col-span-2">
               <button
                 type="submit"
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#9B59D0] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                disabled={saving || freeLimitBelowClaimed}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#9B59D0] px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
                 {saving
