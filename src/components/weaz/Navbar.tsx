@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut, User, CreditCard, Calendar, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,6 +51,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [brandFace, setBrandFace] = useState<"wordmark" | "partner">("wordmark");
   const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
   const [adminResult, setAdminResult] = useState<AdminResult | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -164,6 +166,16 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     return () => window.removeEventListener("enrollment-updated", handler);
   }, [fetchProfile]);
 
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reduceMotion.matches) return;
+
+    const id = window.setInterval(() => {
+      setBrandFace((face) => (face === "wordmark" ? "partner" : "wordmark"));
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const handleEnrollClick = () => {
     onEnroll();
   };
@@ -247,9 +259,47 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           <motion.span
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400 }}
-            className="inline-flex items-center"
+            className="relative inline-flex h-10 items-center"
           >
-            WEAZ<span className="text-[#9B59D0] group-hover:text-[#FBBF24] transition-colors">.</span>TECH
+            {/* Invisible sizer keeps the header from reflowing as the two faces swap. */}
+            <span className="invisible" aria-hidden="true">
+              WEAZ.TECH
+            </span>
+
+            <span className="absolute inset-0 flex items-center">
+              <AnimatePresence mode="wait" initial={false}>
+                {brandFace === "wordmark" ? (
+                  <motion.span
+                    key="wordmark"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6, ease: "easeInOut" }}
+                    className="inline-flex items-center whitespace-nowrap"
+                  >
+                    WEAZ<span className="text-[#9B59D0] group-hover:text-[#FBBF24] transition-colors">.</span>TECH
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="partner"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6, ease: "easeInOut" }}
+                    className="inline-flex items-center"
+                  >
+                    <Image
+                      src="/power-by.webp"
+                      alt="Powered by FCS — Love and Trust"
+                      width={65}
+                      height={36}
+                      priority
+                      className="h-9 w-auto"
+                    />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </span>
           </motion.span>
         </Link>
 
