@@ -10,7 +10,7 @@ import React, {
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, LogOut, User, CreditCard, Calendar, Shield } from "lucide-react";
+import { Menu, X, LogOut, User, CreditCard, Calendar, Shield, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShineButton } from "@/components/ui/ShineButton";
 import { useAuth } from "@/providers/AuthProvider";
@@ -38,6 +38,7 @@ interface EnrollmentInfo {
 interface ProfileResult {
   userId: string;
   enrollment: EnrollmentInfo | null;
+  courseAccess: string[];
 }
 
 interface AdminResult {
@@ -63,6 +64,11 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     user && profileResult?.userId === user.id
       ? profileResult.enrollment
       : null;
+  const hasCourses = Boolean(
+    user &&
+      profileResult?.userId === user.id &&
+      profileResult.courseAccess.length > 0
+  );
   const isAdmin = Boolean(
     user &&
       adminResult?.userId === user.id &&
@@ -109,6 +115,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
       setProfileResult({
         userId: user.id,
         enrollment: data.enrollment ?? null,
+        courseAccess: data.courseAccess ?? [],
       });
     } catch {
       // Keep the navigation usable if profile loading fails.
@@ -131,6 +138,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           setProfileResult({
             userId,
             enrollment: data.enrollment ?? null,
+            courseAccess: data.courseAccess ?? [],
           });
         }
       })
@@ -432,6 +440,16 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                     )}
 
                     <div className="p-1.5 space-y-0.5">
+                      {hasCourses && (
+                        <Link
+                          href="/learn"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.06] rounded-xl transition-all cursor-pointer"
+                        >
+                          <GraduationCap size={15} />
+                          My Courses
+                        </Link>
+                      )}
                       {isAdmin && (
                         <Link
                           href="/admin"
@@ -530,6 +548,18 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                     )}
                   </div>
                 </div>
+              )}
+
+              {hasCourses && (
+                <Link
+                  href="/learn"
+                  onClick={() => setOpen(false)}
+                  data-testid="nav-mobile-courses-link"
+                  className="flex items-center gap-2.5 rounded-xl border border-[#9B59D0]/25 bg-[#9B59D0]/10 px-3 py-2.5 text-sm font-semibold text-[#d7b4f3]"
+                >
+                  <GraduationCap size={15} />
+                  My Courses
+                </Link>
               )}
 
               {user && isAdmin && (

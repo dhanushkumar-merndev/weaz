@@ -54,6 +54,70 @@ export type Database = {
         }
         Relationships: []
       }
+      course_access_grants: {
+        Row: {
+          created_at: string
+          granted_by: string
+          id: string
+          program_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by: string
+          id?: string
+          program_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string
+          id?: string
+          program_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_access_grants_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_module_slides: {
+        Row: {
+          module_key: string
+          program_id: number
+          slides_url: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          module_key: string
+          program_id: number
+          slides_url: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          module_key?: string
+          program_id?: number
+          slides_url?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_module_slides_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           created_at: string
@@ -110,6 +174,7 @@ export type Database = {
           id: number
           name: string
           price_paise: number
+          slug: string | null
           tagline: string
         }
         Insert: {
@@ -120,6 +185,7 @@ export type Database = {
           id?: number
           name: string
           price_paise: number
+          slug?: string | null
           tagline: string
         }
         Update: {
@@ -130,6 +196,7 @@ export type Database = {
           id?: number
           name?: string
           price_paise?: number
+          slug?: string | null
           tagline?: string
         }
         Relationships: []

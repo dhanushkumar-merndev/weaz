@@ -2,19 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/supabase/api";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { isTrustedBrowserRequest } from "@/lib/payment-security";
-
-function parseDurationMonths(duration: string): number | null {
-  const match = duration.match(/(\d+)\s*Months?/i);
-  if (match) return parseInt(match[1], 10);
-  return null;
-}
-
-function isExpired(paidAt: string, durationMonths: number): boolean {
-  const paid = new Date(paidAt);
-  const expiry = new Date(paid);
-  expiry.setMonth(expiry.getMonth() + durationMonths);
-  return new Date() > expiry;
-}
+import { isExpired, parseDurationMonths } from "@/lib/enrollment-period";
 
 export async function POST(request: Request) {
   if (!isTrustedBrowserRequest(request)) {

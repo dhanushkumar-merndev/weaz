@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAuth } from "@/providers/AuthProvider";
+import { AdminTabs } from "@/components/admin/AdminShell";
 import { Search, Loader2, ShieldAlert, Shield, ChevronLeft, ChevronRight, ArrowUpDown, LogOut, Home } from "lucide-react";
 
 interface EnrollmentRow {
@@ -181,20 +182,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-        <div className="mb-7 inline-flex rounded-xl border border-white/[0.07] bg-white/[0.03] p-1">
-          <Link
-            href="/admin"
-            className="rounded-lg bg-[#9B59D0] px-4 py-2 text-sm font-medium text-white shadow-lg shadow-[#9B59D0]/20"
-          >
-            Platform Courses
-          </Link>
-          <Link
-            href="/admin/webinars"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-white/45 transition hover:text-white"
-          >
-            Webinars
-          </Link>
-        </div>
+        <AdminTabs active="enrollments" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="relative w-full sm:w-72">

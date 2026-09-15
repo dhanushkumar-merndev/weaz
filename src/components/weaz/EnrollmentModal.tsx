@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -372,12 +373,23 @@ export function EnrollmentModal({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <button
-                  onClick={() => onOpenChange(false)}
-                  className="pill-gold px-8 py-3 mt-8 text-sm cursor-pointer"
-                >
-                  Done
-                </button>
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                  {step === "success" && (
+                    <Link
+                      href="/learn"
+                      onClick={() => onOpenChange(false)}
+                      className="pill-gold px-8 py-3 text-sm"
+                    >
+                      Start Learning
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => onOpenChange(false)}
+                    className={`${step === "success" ? "pill-ghost" : "pill-gold"} px-8 py-3 text-sm cursor-pointer`}
+                  >
+                    Done
+                  </button>
+                </div>
               </motion.div>
             </div>
           ) : (
