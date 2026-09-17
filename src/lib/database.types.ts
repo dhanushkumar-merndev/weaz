@@ -86,31 +86,55 @@ export type Database = {
           },
         ]
       }
-      course_module_slides: {
+      course_modules: {
         Row: {
-          module_key: string
+          created_at: string
+          created_by: string
+          id: string
+          position: number
+          presentation_id: string
           program_id: number
+          slides: Json
           slides_url: string
+          summary: string
+          synced_at: string | null
+          title: string
           updated_at: string
           updated_by: string
         }
         Insert: {
-          module_key: string
+          created_at?: string
+          created_by: string
+          id?: string
+          position?: number
+          presentation_id: string
           program_id: number
+          slides?: Json
           slides_url: string
+          summary?: string
+          synced_at?: string | null
+          title: string
           updated_at?: string
           updated_by: string
         }
         Update: {
-          module_key?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          position?: number
+          presentation_id?: string
           program_id?: number
+          slides?: Json
           slides_url?: string
+          summary?: string
+          synced_at?: string | null
+          title?: string
           updated_at?: string
           updated_by?: string
         }
         Relationships: [
           {
-            foreignKeyName: "course_module_slides_program_id_fkey"
+            foreignKeyName: "course_modules_program_id_fkey"
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"

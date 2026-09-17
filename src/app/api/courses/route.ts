@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/supabase/api";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { getUserCourseAccess } from "@/lib/course-access";
+import {
+  getProgramIdsBySlug,
+  loadModuleRows,
+  resolveCourseModules,
+  toCourseMeta,
+} from "@/lib/course-modules";
 import { courses } from "@/content/courses";
 import type { CourseSummary } from "@/lib/course-types";
 
@@ -16,16 +23,29 @@ export async function GET(request: Request) {
   }
 
   try {
-    const access = await getUserCourseAccess(user.id);
-    const summaries: CourseSummary[] = courses.map(({ modules, ...meta }) => ({
-      ...meta,
-      modules: modules.map((module) => ({
-        key: module.key,
-        title: module.title,
-        slideCount: module.slides.length,
-      })),
-      access: access.find((state) => state.slug === meta.slug)!,
-    }));
+    const supabase = getSupabaseAdmin();
+    const [access, programIds] = await Promise.all([
+      getUserCourseAccess(user.id, supabase),
+      getProgramIdsBySlug(supabase),
+    ]);
+    const rows = await loadModuleRows(supabase, [...programIds.values()]);
+
+    const summaries: CourseSummary[] = courses.map((course) => {
+      const programId = programIds.get(course.slug);
+      const modules = resolveCourseModules(
+        course.slug,
+        rows.filter((row) => row.program_id === programId)
+      );
+      return {
+        ...toCourseMeta(course),
+        modules: modules.map((courseModule) => ({
+          key: courseModule.key,
+          title: courseModule.title,
+          slideCount: courseModule.slides.length,
+        })),
+        access: access.find((state) => state.slug === course.slug)!,
+      };
+    });
 
     return NextResponse.json({ courses: summaries }, { headers: NO_STORE });
   } catch (error) {

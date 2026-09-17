@@ -27,7 +27,8 @@ export const SLIDE_KIND_LABEL: Record<SlideKind, string> = {
 };
 
 export interface CourseSlide {
-  kind: SlideKind;
+  /** Built-in slides only; slides read from Google Slides have no kind. */
+  kind?: SlideKind;
   title: string;
   /** Presenter-style explanation shown alongside the slide. */
   description: string;
@@ -89,18 +90,25 @@ export interface StudentRow {
   courses: CourseAccessState[];
 }
 
-/** A course returned by GET /api/admin/course-slides. */
-export interface AdminCourseSlides {
+/** An admin-created module returned by the /api/admin/course-modules routes. */
+export interface AdminCourseModule {
+  id: string;
+  title: string;
+  summary: string;
+  slidesUrl: string;
+  slideCount: number;
+  slideTitles: string[];
+  syncedAt: string | null;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+/** A course returned by GET /api/admin/course-modules. */
+export interface AdminCourse {
   slug: CourseSlug;
   title: string;
   accent: string;
   linkedToProgram: boolean;
-  modules: {
-    key: string;
-    title: string;
-    slideCount: number;
-    slidesUrl: string | null;
-    updatedBy: string | null;
-    updatedAt: string | null;
-  }[];
+  builtinModuleCount: number;
+  modules: AdminCourseModule[];
 }

@@ -1,10 +1,15 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/supabase/api";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getProgramIdForCourse, getUserCourseAccess } from "@/lib/course-access";
+import {
+  loadModuleRows,
+  refreshStaleModules,
+  resolveCourseModules,
+  toCourseMeta,
+} from "@/lib/course-modules";
 import { getCourse } from "@/content/courses";
 import { isCourseSlug, type CourseDetail } from "@/lib/course-types";
-import { toGoogleSlidesEmbedUrl } from "@/lib/google-slides";
 
 export const runtime = "nodejs";
 
@@ -49,27 +54,18 @@ export async function GET(
       });
     }
 
-    const embedUrlByModule = new Map<string, string | null>();
     const programId = await getProgramIdForCourse(supabase, course.slug);
-    if (programId) {
-      const { data, error } = await supabase
-        .from("course_module_slides")
-        .select("module_key, slides_url")
-        .eq("program_id", programId);
-      if (error) throw new Error(error.message);
-      for (const row of data) {
-        embedUrlByModule.set(row.module_key, toGoogleSlidesEmbedUrl(row.slides_url));
-      }
-    }
+    const rows = programId ? await loadModuleRows(supabase, [programId]) : [];
 
     const detail: CourseDetail = {
-      ...course,
-      modules: course.modules.map((module) => ({
-        ...module,
-        googleSlidesEmbedUrl: embedUrlByModule.get(module.key) ?? null,
-      })),
+      ...toCourseMeta(course),
+      modules: resolveCourseModules(course.slug, rows),
       access,
     };
+
+    // Serve the stored slides now; pick up edits made in Google Slides for
+    // the next visit.
+    if (rows.length) after(() => refreshStaleModules(supabase, rows));
 
     return NextResponse.json({ course: detail }, { headers: NO_STORE });
   } catch (error) {

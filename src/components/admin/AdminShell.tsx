@@ -9,7 +9,7 @@ import { useAuth } from "@/providers/AuthProvider";
 const ADMIN_TABS = [
   { key: "enrollments", href: "/admin", label: "Platform Courses" },
   { key: "students", href: "/admin/students", label: "Students & Access" },
-  { key: "course-slides", href: "/admin/course-slides", label: "Course Slides" },
+  { key: "course-modules", href: "/admin/course-modules", label: "Course Modules" },
   { key: "webinars", href: "/admin/webinars", label: "Webinars" },
 ] as const;
 

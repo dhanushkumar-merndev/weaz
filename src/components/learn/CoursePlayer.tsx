@@ -161,13 +161,17 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
       visited: saved.visited.includes(current) ? saved.visited : [...saved.visited, current],
     };
   });
-  const [viewPreference, setViewPreference] = useState<"google" | "deck">("google");
+  const [viewPreference, setViewPreference] = useState<"google" | "deck">("deck");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { moduleIndex, slideIndex } = progress;
   const courseModule = course.modules[moduleIndex];
   const slide = courseModule.slides[slideIndex];
   const embedUrl = courseModule.googleSlidesEmbedUrl;
+  const about =
+    viewPreference === "deck" || !embedUrl
+      ? slide.description || courseModule.summary
+      : courseModule.summary;
   const view = embedUrl && viewPreference === "google" ? "google" : "deck";
   const lastModule = moduleIndex === course.modules.length - 1;
   const lastSlide = slideIndex === courseModule.slides.length - 1;
@@ -310,9 +314,12 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
                     </span>
                   </button>
                   {current && (
-                    <ol className="space-y-0.5 pb-3 pl-14 pr-3">
+                    <ol
+                      data-lenis-prevent
+                      className={`space-y-0.5 pb-3 pl-14 pr-3 ${item.slides.length > 5 ? "max-h-56 overflow-y-auto" : ""}`}
+                    >
                       {item.slides.map((entry, i) => (
-                        <li key={entry.title}>
+                        <li key={i}>
                           <button
                             type="button"
                             onClick={() => {
@@ -405,7 +412,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
                       color: course.accent,
                     }}
                   >
-                    {SLIDE_KIND_LABEL[slide.kind]}
+                    {slide.kind ? SLIDE_KIND_LABEL[slide.kind] : `Module ${pad(moduleIndex + 1)}`}
                   </span>
                   <span className="font-mono text-xs text-white/40">
                     {pad(slideIndex + 1)} / {pad(courseModule.slides.length)}
@@ -419,7 +426,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
                 <ul className="mt-6 grid gap-3 sm:grid-cols-2 md:mt-auto md:pt-6">
                   {slide.points.map((point, index) => (
                     <li
-                      key={point}
+                      key={index}
                       className="flex gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 sm:p-4"
                     >
                       <span
@@ -453,11 +460,11 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
               <ChevronLeft size={16} /> <span className="hidden sm:inline">Previous</span>
             </button>
 
-            {view === "deck" ? (
+            {view === "deck" && courseModule.slides.length <= 10 ? (
               <div className="flex items-center gap-1.5">
-                {courseModule.slides.map((entry, index) => (
+                {courseModule.slides.map((_, index) => (
                   <button
-                    key={entry.title}
+                    key={index}
                     type="button"
                     onClick={() => goTo(moduleIndex, index)}
                     aria-label={`Go to slide ${index + 1}`}
@@ -469,7 +476,9 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
               </div>
             ) : (
               <span className="text-xs text-white/40">
-                Module {moduleIndex + 1} of {course.modules.length}
+                {view === "deck"
+                  ? `Slide ${slideIndex + 1} of ${courseModule.slides.length}`
+                  : `Module ${moduleIndex + 1} of ${course.modules.length}`}
               </span>
             )}
 
@@ -484,14 +493,18 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
-                {view === "deck" ? "About this slide" : "About this module"}
+            {about ? (
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
+                  {view === "deck" && slide.description ? "About this slide" : "About this module"}
+                </div>
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/75">
+                  {about}
+                </p>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-white/75">
-                {view === "deck" ? slide.description : courseModule.summary}
-              </p>
-            </div>
+            ) : (
+              <div aria-hidden="true" className="hidden lg:block" />
+            )}
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
               <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
                 Your progress
