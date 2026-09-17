@@ -21,6 +21,8 @@ export type CourseModuleRow = Tables<"course_modules">;
 
 /** How old a module's stored slide text may get before it is re-read from Google. */
 const SYNC_INTERVAL_MS = 10 * 60 * 1000;
+/** Retry interval for modules still missing Google slide ids. */
+const MISSING_IDS_RETRY_MS = 60 * 1000;
 
 export function toCourseMeta(course: Course): CourseMeta {
   const { slug, programName, title, tag, description, accent, priceLabel } = course;
@@ -31,7 +33,7 @@ export function parseStoredSlides(value: Json): CourseSlide[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
-    const { title, description, points } = item;
+    const { title, description, points, googleSlideId } = item;
     if (typeof title !== "string") return [];
     return [
       {
@@ -40,6 +42,9 @@ export function parseStoredSlides(value: Json): CourseSlide[] {
         points: Array.isArray(points)
           ? points.filter((point): point is string => typeof point === "string")
           : [],
+        ...(typeof googleSlideId === "string" && /^[A-Za-z0-9_-]+$/.test(googleSlideId)
+          ? { googleSlideId }
+          : {}),
       },
     ];
   });
@@ -105,6 +110,7 @@ export function toAdminModule(row: CourseModuleRow): AdminCourseModule {
     slidesUrl: row.slides_url,
     slideCount: slides.length,
     slideTitles: slides.map((slide) => slide.title),
+    publicEditAccess: row.public_edit_access,
     syncedAt: row.synced_at,
     updatedBy: row.updated_by,
     updatedAt: row.updated_at,
@@ -113,22 +119,26 @@ export function toAdminModule(row: CourseModuleRow): AdminCourseModule {
 
 /**
  * Re-reads decks whose stored text is older than the sync interval, so edits
- * in Google Slides reach learners without an admin action. Each module is
- * claimed with a conditional update first, so concurrent requests don't all
- * call Google; a failed read keeps the previous slides.
+ * in Google Slides reach learners without an admin action. Modules whose
+ * slides lack Google page ids (synced before ids were stored) are refreshed
+ * sooner so slide navigation starts working. Each module is claimed with a
+ * conditional update on the synced_at value read, so concurrent requests
+ * don't all call Google; a failed read keeps the previous slides.
  */
 export async function refreshStaleModules(supabase: SupabaseAdmin, rows: CourseModuleRow[]) {
-  const cutoff = Date.now() - SYNC_INTERVAL_MS;
-
   for (const row of rows) {
-    if (row.synced_at && new Date(row.synced_at).getTime() > cutoff) continue;
+    const missingIds = parseStoredSlides(row.slides).some((slide) => !slide.googleSlideId);
+    const interval = missingIds ? MISSING_IDS_RETRY_MS : SYNC_INTERVAL_MS;
+    if (row.synced_at && new Date(row.synced_at).getTime() > Date.now() - interval) continue;
 
-    const cutoffIso = new Date(cutoff).toISOString();
-    const { data: claimed } = await supabase
+    const claim = supabase
       .from("course_modules")
       .update({ synced_at: new Date().toISOString() })
-      .eq("id", row.id)
-      .or(`synced_at.is.null,synced_at.lt.${cutoffIso}`)
+      .eq("id", row.id);
+    const { data: claimed } = await (row.synced_at
+      ? claim.eq("synced_at", row.synced_at)
+      : claim.is("synced_at", null)
+    )
       .select("id")
       .maybeSingle();
     if (!claimed) continue;
@@ -137,7 +147,10 @@ export async function refreshStaleModules(supabase: SupabaseAdmin, rows: CourseM
       const deck = await fetchGoogleSlides(row.presentation_id);
       const { error } = await supabase
         .from("course_modules")
-        .update({ slides: deck.slides as unknown as Json })
+        .update({
+          slides: deck.slides as unknown as Json,
+          public_edit_access: deck.publicEditAccess,
+        })
         .eq("id", row.id);
       if (error) throw new Error(error.message);
     } catch (error) {

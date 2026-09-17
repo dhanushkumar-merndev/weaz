@@ -265,11 +265,13 @@ export function MyCourses() {
     <div className="min-h-screen bg-[#0F0B14]">
       <Navbar onEnroll={() => openEnroll()} />
 
-      <main className="relative overflow-hidden pb-20 pt-32 md:pt-40">
+      {/* Top spacing sits on the inner div: globals.css sets main's padding-top
+          to the announcement bar height, which would override it here. */}
+      <main className="relative overflow-hidden">
         <div className="blob blob-purple" style={{ width: 450, height: 450, top: -150, left: -100 }} />
         <div className="blob blob-gold" style={{ width: 350, height: 350, top: 50, right: -100 }} />
 
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 pb-20 pt-32 sm:px-6 md:pt-40">
           <div className="mb-10 max-w-3xl">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#9B59D0]/30 bg-[#9B59D0]/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-[#9B59D0]">
               My Learning

@@ -93,6 +93,7 @@ export type Database = {
           id: string
           position: number
           presentation_id: string
+          public_edit_access: boolean | null
           program_id: number
           slides: Json
           slides_url: string
@@ -108,6 +109,7 @@ export type Database = {
           id?: string
           position?: number
           presentation_id: string
+          public_edit_access?: boolean | null
           program_id: number
           slides?: Json
           slides_url: string
@@ -123,6 +125,7 @@ export type Database = {
           id?: string
           position?: number
           presentation_id?: string
+          public_edit_access?: boolean | null
           program_id?: number
           slides?: Json
           slides_url?: string

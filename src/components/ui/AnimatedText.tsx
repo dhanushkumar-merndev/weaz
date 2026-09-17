@@ -86,7 +86,7 @@ export function AnimatedText({
   }
 
   return (
-    <Wrapper ref={containerRef as any} className={className}>
+    <Wrapper ref={containerRef} className={className}>
       {words.map((word, i) => (
         <span key={i} className="gsap-word inline-block mr-[0.25em] will-change-transform">
           {word}

@@ -9,11 +9,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  LayoutTemplate,
   ListTree,
   Loader2,
   Lock,
-  Presentation,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -37,6 +35,9 @@ type LoadResult =
   | { status: "not-found" };
 
 const pad = (value: number) => String(value).padStart(2, "0");
+
+/** Height of the control bar Google renders at the bottom of a Slides embed. */
+const GOOGLE_EMBED_CONTROLS_PX = 37;
 
 function FullScreenMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -161,18 +162,29 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
       visited: saved.visited.includes(current) ? saved.visited : [...saved.visited, current],
     };
   });
-  const [viewPreference, setViewPreference] = useState<"google" | "deck">("deck");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { moduleIndex, slideIndex } = progress;
   const courseModule = course.modules[moduleIndex];
   const slide = courseModule.slides[slideIndex];
   const embedUrl = courseModule.googleSlidesEmbedUrl;
-  const about =
-    viewPreference === "deck" || !embedUrl
-      ? slide.description || courseModule.summary
-      : courseModule.summary;
-  const view = embedUrl && viewPreference === "google" ? "google" : "deck";
+  // Modules with a Google Slides deck show only that deck.
+  const view = embedUrl ? "google" : "deck";
+  // Slide-by-slide navigation needs every slide's Google page id; decks synced
+  // before ids were stored fall back to moving a whole module at a time.
+  const moduleLevel =
+    view === "google" && !courseModule.slides.every((entry) => entry.googleSlideId);
+  const embedSrc =
+    embedUrl && slide.googleSlideId
+      ? `${embedUrl}&slide=id.${encodeURIComponent(slide.googleSlideId)}`
+      : embedUrl;
+  const about = moduleLevel ? courseModule.summary : slide.description || courseModule.summary;
+  const aboutLabel =
+    moduleLevel || !slide.description
+      ? "About this module"
+      : view === "google"
+        ? `About slide ${slideIndex + 1}`
+        : "About this slide";
   const lastModule = moduleIndex === course.modules.length - 1;
   const lastSlide = slideIndex === courseModule.slides.length - 1;
 
@@ -201,7 +213,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
   };
 
   const next = () => {
-    if (view === "google") {
+    if (moduleLevel) {
       goTo(lastModule ? moduleIndex : moduleIndex + 1, 0, true);
     } else if (!lastSlide) {
       goTo(moduleIndex, slideIndex + 1);
@@ -211,7 +223,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
   };
 
   const previous = () => {
-    if (view === "google") {
+    if (moduleLevel) {
       if (moduleIndex > 0) goTo(moduleIndex - 1, 0);
     } else if (slideIndex > 0) {
       goTo(moduleIndex, slideIndex - 1);
@@ -220,19 +232,18 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
     }
   };
 
-  const atStart = moduleIndex === 0 && (view === "google" || slideIndex === 0);
-  const atEnd = lastModule && (view === "google" ? false : lastSlide);
-  const nextLabel =
-    view === "google"
-      ? lastModule
-        ? "Mark complete"
-        : "Next module"
-      : lastSlide && !lastModule
-        ? "Next module"
-        : "Next";
+  const atStart = moduleIndex === 0 && (moduleLevel || slideIndex === 0);
+  const atEnd = lastModule && (moduleLevel ? false : lastSlide);
+  const nextLabel = moduleLevel
+    ? lastModule
+      ? "Mark complete"
+      : "Next module"
+    : lastSlide && !lastModule
+      ? "Next module"
+      : "Next";
 
   useEffect(() => {
-    if (view !== "deck") return;
+    if (moduleLevel) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
@@ -322,12 +333,9 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
                         <li key={i}>
                           <button
                             type="button"
-                            onClick={() => {
-                              setViewPreference("deck");
-                              goTo(index, i);
-                            }}
+                            onClick={() => goTo(index, i)}
                             className={`w-full py-1.5 text-left text-xs transition ${
-                              view === "deck" && i === slideIndex
+                              !moduleLevel && i === slideIndex
                                 ? "font-semibold text-white"
                                 : "text-white/45 hover:text-white"
                             }`}
@@ -345,43 +353,30 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
         </aside>
 
         <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: course.accent }}>
-                Module {pad(moduleIndex + 1)} of {pad(course.modules.length)}
-              </div>
-              <h1 className="font-display mt-1.5 text-2xl font-black sm:text-3xl">{courseModule.title}</h1>
-              <p className="mt-1.5 max-w-2xl text-sm text-white/55">{courseModule.summary}</p>
+          <div className="mb-5 min-w-0">
+            <div className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: course.accent }}>
+              Module {pad(moduleIndex + 1)} of {pad(course.modules.length)}
             </div>
-            {embedUrl && (
-              <div className="inline-flex w-fit shrink-0 rounded-xl border border-white/10 bg-white/[0.03] p-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setViewPreference("google")}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition ${view === "google" ? "bg-white/10 text-white" : "text-white/50 hover:text-white"}`}
-                >
-                  <Presentation size={14} /> Google Slides
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewPreference("deck")}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition ${view === "deck" ? "bg-white/10 text-white" : "text-white/50 hover:text-white"}`}
-                >
-                  <LayoutTemplate size={14} /> WEAZ Slides
-                </button>
-              </div>
+            <h1 className="font-display mt-1.5 text-2xl font-black sm:text-3xl">{courseModule.title}</h1>
+            {courseModule.summary && (
+              <p className="mt-1.5 max-w-2xl text-sm text-white/55">{courseModule.summary}</p>
             )}
           </div>
 
-          {view === "google" && embedUrl ? (
-            <div className="aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black">
+          {view === "google" && embedSrc ? (
+            <div className="relative aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black">
+              {/* A new src (a different slide) remounts the embed on that slide.
+                  The frame is taller than the box by the height of Google's
+                  control bar, which is clipped off: the slide then fills the
+                  16:9 box exactly and navigation stays with the page controls. */}
               <iframe
-                key={embedUrl}
-                src={embedUrl}
+                key={embedSrc}
+                src={embedSrc}
                 title={`${courseModule.title} — Google Slides`}
                 allow="fullscreen"
                 allowFullScreen
-                className="h-full w-full"
+                className="absolute inset-x-0 top-0 w-full"
+                style={{ height: `calc(100% + ${GOOGLE_EMBED_CONTROLS_PX}px)` }}
               />
             </div>
           ) : (
@@ -460,7 +455,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
               <ChevronLeft size={16} /> <span className="hidden sm:inline">Previous</span>
             </button>
 
-            {view === "deck" && courseModule.slides.length <= 10 ? (
+            {!moduleLevel && courseModule.slides.length <= 10 ? (
               <div className="flex items-center gap-1.5">
                 {courseModule.slides.map((_, index) => (
                   <button
@@ -476,9 +471,9 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
               </div>
             ) : (
               <span className="text-xs text-white/40">
-                {view === "deck"
-                  ? `Slide ${slideIndex + 1} of ${courseModule.slides.length}`
-                  : `Module ${moduleIndex + 1} of ${course.modules.length}`}
+                {moduleLevel
+                  ? `Module ${moduleIndex + 1} of ${course.modules.length}`
+                  : `Slide ${slideIndex + 1} of ${courseModule.slides.length}`}
               </span>
             )}
 
@@ -496,7 +491,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
             {about ? (
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
                 <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
-                  {view === "deck" && slide.description ? "About this slide" : "About this module"}
+                  {aboutLabel}
                 </div>
                 <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/75">
                   {about}
@@ -515,7 +510,7 @@ function PlayerView({ course, userId }: { course: CourseDetail; userId: string }
                   ? "Course complete — great work!"
                   : `${viewed} of ${total} slides viewed`}
               </p>
-              {view === "deck" && (
+              {!moduleLevel && (
                 <p className="mt-3 hidden text-xs text-white/30 lg:block">Tip: use ← → keys to move.</p>
               )}
             </div>

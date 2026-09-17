@@ -11,7 +11,7 @@ import { isCourseSlug, type AdminCourse } from "@/lib/course-types";
 import {
   fetchGoogleSlides,
   GoogleSlidesError,
-  isGoogleSlidesConfigured,
+  PUBLIC_EDIT_ACCESS_MESSAGE,
 } from "@/lib/google-slides-import";
 import { isTrustedBrowserRequest } from "@/lib/payment-security";
 
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       };
     });
 
-    return jsonResponse({ googleApiConfigured: isGoogleSlidesConfigured(), courses: result });
+    return jsonResponse({ courses: result });
   } catch (error) {
     console.error("Could not load course modules", error);
     return jsonResponse({ error: "Could not load course modules" }, 500);
@@ -103,6 +103,9 @@ export async function POST(request: Request) {
       }
       throw error;
     }
+    if (deck.publicEditAccess) {
+      return jsonResponse({ error: PUBLIC_EDIT_ACCESS_MESSAGE, code: "public-edit-access" }, 422);
+    }
 
     const { data: last, error: positionError } = await supabase
       .from("course_modules")
@@ -118,11 +121,15 @@ export async function POST(request: Request) {
       .from("course_modules")
       .insert({
         program_id: programId,
-        title: fields.title || (deck.title.length >= 2 ? deck.title : "Untitled module"),
+        title:
+          fields.title ||
+          [deck.title, deck.slides[0].title.slice(0, 120)].find((title) => title.length >= 2) ||
+          "Untitled module",
         summary: fields.summary ?? "",
         slides_url: fields.slidesUrl!,
         presentation_id: fields.presentationId!,
         slides: deck.slides as unknown as Json,
+        public_edit_access: deck.publicEditAccess,
         synced_at: new Date().toISOString(),
         position: (last?.position ?? -1) + 1,
         created_by: adminEmail,

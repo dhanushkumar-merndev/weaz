@@ -42,6 +42,7 @@ interface Program {
   audience: string;
   duration: string;
   price_paise: number;
+  slug: string | null;
 }
 
 interface EnrollmentModalProps {
@@ -78,6 +79,7 @@ export function EnrollmentModal({
   const supabase = useMemo(() => createClient(), []);
 
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [ownedSlugs, setOwnedSlugs] = useState<string[]>([]);
   const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [step, setStep] = useState<
     "form" | "paying" | "processing" | "success"
@@ -89,15 +91,35 @@ export function EnrollmentModal({
   useEffect(() => {
     if (!open) return;
 
-    supabase.from("programs").select("*").order("id").then(({ data }) => {
-      if (data) setPrograms(data);
+    // Courses the user can already open (purchased or granted by an admin)
+    // are not offered again.
+    const ownedRequest: Promise<string[]> = user
+      ? fetch("/api/user/profile")
+          .then((response) => (response.ok ? response.json() : null))
+          .then((profile) => (Array.isArray(profile?.courseAccess) ? profile.courseAccess : []))
+          .catch(() => [])
+      : Promise.resolve([]);
+
+    Promise.all([
+      supabase.from("programs").select("*").order("id"),
+      ownedRequest,
+    ]).then(([{ data }, owned]) => {
+      const available = (data ?? []).filter(
+        (p) => !p.slug || !owned.includes(p.slug)
+      );
+      const isAvailable = (id: string) =>
+        available.some((p) => String(p.id) === id);
+
+      setOwnedSlugs(owned);
+      setPrograms(available);
+      setSelectedProgramId((current) => (isAvailable(current) ? current : ""));
       setLoadingPrograms(false);
 
-      if (rawDefault && data) {
+      if (rawDefault) {
         const normalizedDefault = normalizeProgramName(rawDefault);
         const wantedName =
           programAliases[normalizedDefault] || normalizedDefault;
-        const match = data.find(
+        const match = available.find(
           (p) => normalizeProgramName(p.name) === wantedName
         );
         if (match) setSelectedProgramId(String(match.id));
@@ -117,7 +139,9 @@ export function EnrollmentModal({
       if (intent?.type === "enrollment") {
         clearAuthIntent();
         setForm((f) => mergeEntered(f, intent.form));
-        if (intent.programId) setSelectedProgramId(intent.programId);
+        if (intent.programId && isAvailable(intent.programId)) {
+          setSelectedProgramId(intent.programId);
+        }
       }
     });
   }, [open, rawDefault, supabase, user]);
@@ -467,6 +491,18 @@ export function EnrollmentModal({
                     </div>
                   </div>
 
+                  {!loadingPrograms && programs.length === 0 && ownedSlugs.length > 0 ? (
+                    <div className="rounded-xl border border-[#22c55e]/25 bg-[#22c55e]/10 p-4 text-sm text-white/80">
+                      You already have access to every program.{" "}
+                      <Link
+                        href="/learn"
+                        onClick={() => onOpenChange(false)}
+                        className="font-semibold text-[#FBBF24] hover:underline"
+                      >
+                        Go to My Courses
+                      </Link>
+                    </div>
+                  ) : (
                   <div>
                     <Label className="text-xs uppercase tracking-widest text-white/60">
                       Select Program *
@@ -490,7 +526,20 @@ export function EnrollmentModal({
                         ))}
                       </SelectContent>
                     </Select>
+                    {ownedSlugs.length > 0 && (
+                      <p className="mt-2 text-xs text-white/40">
+                        Programs you already have are hidden.{" "}
+                        <Link
+                          href="/learn"
+                          onClick={() => onOpenChange(false)}
+                          className="text-[#FBBF24] hover:underline"
+                        >
+                          Open My Courses
+                        </Link>
+                      </p>
+                    )}
                   </div>
+                  )}
 
                   <div>
                     <Label className="text-xs uppercase tracking-widest text-white/60">

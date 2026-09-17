@@ -3,6 +3,8 @@ import { getUserFromRequest } from "@/lib/supabase/api";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { isTrustedBrowserRequest } from "@/lib/payment-security";
 import { isExpired, parseDurationMonths } from "@/lib/enrollment-period";
+import { getUserCourseAccess } from "@/lib/course-access";
+import { isCourseSlug } from "@/lib/course-types";
 
 export async function POST(request: Request) {
   if (!isTrustedBrowserRequest(request)) {
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
   // Get program details
   const { data: program, error: programError } = await supabase
     .from("programs")
-    .select("duration")
+    .select("duration, slug")
     .eq("id", programId as number)
     .single();
 
@@ -84,6 +86,29 @@ export async function POST(request: Request) {
 
   if (!program) {
     return NextResponse.json({ error: "Program not found" }, { status: 404 });
+  }
+
+  // Covers access granted by an admin, which has no paid enrollment behind it.
+  if (isCourseSlug(program.slug)) {
+    let hasAccess: boolean;
+    try {
+      hasAccess = Boolean(
+        (await getUserCourseAccess(user.id, supabase)).find(
+          (state) => state.slug === program.slug
+        )?.hasAccess
+      );
+    } catch {
+      return NextResponse.json(
+        { error: "Failed to check existing enrollment" },
+        { status: 500 }
+      );
+    }
+    if (hasAccess) {
+      return NextResponse.json(
+        { error: "You already have access to this program. Open it from My Courses." },
+        { status: 409 }
+      );
+    }
   }
 
   // Check for existing active paid enrollment for this user + program

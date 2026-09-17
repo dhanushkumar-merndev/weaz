@@ -5,7 +5,11 @@ import { recordAdminAction } from "@/lib/admin-audit";
 import type { Json, TablesUpdate } from "@/lib/database.types";
 import { MODULE_TITLE_MAX, readModuleFields } from "@/lib/course-module-input";
 import { toAdminModule } from "@/lib/course-modules";
-import { fetchGoogleSlides, GoogleSlidesError } from "@/lib/google-slides-import";
+import {
+  fetchGoogleSlides,
+  GoogleSlidesError,
+  PUBLIC_EDIT_ACCESS_MESSAGE,
+} from "@/lib/google-slides-import";
 import { isEnrollmentId as isUuid, isTrustedBrowserRequest } from "@/lib/payment-security";
 
 export const runtime = "nodejs";
@@ -121,25 +125,31 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const editedFields = Object.keys(updates);
-    let slideCount: number | undefined;
 
-    if (linkChanged || body.sync === true) {
-      try {
-        const deck = await fetchGoogleSlides(fields.presentationId ?? row.presentation_id);
-        updates.slides = deck.slides as unknown as Json;
-        updates.synced_at = new Date().toISOString();
-        slideCount = deck.slides.length;
-      } catch (error) {
-        if (error instanceof GoogleSlidesError) {
-          return jsonResponse({ error: error.message, code: error.code }, 422);
-        }
-        throw error;
+    // Every save re-reads the deck, so a link anyone can edit is refused even
+    // when only the title or description changed.
+    let deck: Awaited<ReturnType<typeof fetchGoogleSlides>>;
+    try {
+      deck = await fetchGoogleSlides(fields.presentationId ?? row.presentation_id);
+    } catch (error) {
+      if (error instanceof GoogleSlidesError) {
+        return jsonResponse({ error: error.message, code: error.code }, 422);
       }
+      throw error;
+    }
+    if (deck.publicEditAccess) {
+      if (!linkChanged && row.public_edit_access !== true) {
+        // Record it so the module row shows the warning too.
+        await supabase.from("course_modules").update({ public_edit_access: true }).eq("id", id);
+      }
+      return jsonResponse({ error: PUBLIC_EDIT_ACCESS_MESSAGE, code: "public-edit-access" }, 422);
     }
 
-    if (!Object.keys(updates).length) {
-      return jsonResponse({ module: toAdminModule(row) });
-    }
+    updates.slides = deck.slides as unknown as Json;
+    updates.public_edit_access = deck.publicEditAccess;
+    updates.synced_at = new Date().toISOString();
+    const slideCount = deck.slides.length;
+
     if (editedFields.length) {
       updates.updated_by = adminEmail;
       updates.updated_at = new Date().toISOString();

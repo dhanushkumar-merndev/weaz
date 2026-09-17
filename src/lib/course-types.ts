@@ -33,6 +33,8 @@ export interface CourseSlide {
   /** Presenter-style explanation shown alongside the slide. */
   description: string;
   points: string[];
+  /** Google Slides page id, used to open the embedded deck on this slide. */
+  googleSlideId?: string;
 }
 
 export interface CourseModule {
@@ -98,6 +100,8 @@ export interface AdminCourseModule {
   slidesUrl: string;
   slideCount: number;
   slideTitles: string[];
+  /** Anyone with the link can edit the deck (null: unknown). */
+  publicEditAccess: boolean | null;
   syncedAt: string | null;
   updatedBy: string;
   updatedAt: string;

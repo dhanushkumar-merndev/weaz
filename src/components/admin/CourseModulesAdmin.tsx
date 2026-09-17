@@ -21,6 +21,11 @@ import { slidesLinkProblem } from "@/lib/google-slides";
 
 const QUERY_KEY = ["admin-course-modules"];
 
+// Shown when a background refresh finds a deck was switched to editable after
+// it was added; adding, relinking and syncing refuse editable decks outright.
+const EDIT_ACCESS_WARNING =
+  "Anyone with this link can edit these slides. In Google Slides set Share → Anyone with the link → Viewer, then press sync.";
+
 interface ModuleValues {
   title: string;
   summary: string;
@@ -107,7 +112,7 @@ function ModuleForm({
             value={values.title}
             onChange={set("title")}
             maxLength={120}
-            placeholder="Leave empty to use the deck title"
+            placeholder="Leave empty to use the first slide's title"
             className={inputClass}
           />
         </label>
@@ -202,7 +207,11 @@ function ModuleRow({
       }
       void refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      // A refused save can still record the deck's sharing, so show it.
+      void refresh();
+    },
   });
 
   const remove = useMutation({
@@ -267,6 +276,12 @@ function ModuleRow({
             Open deck <ExternalLink size={11} />
           </a>
         </div>
+        {courseModule.publicEditAccess && (
+          <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-[#FBBF24]/25 bg-[#FBBF24]/10 px-2.5 py-1.5 text-xs text-[#FBBF24]">
+            <AlertTriangle size={13} className="mt-px shrink-0" />
+            {EDIT_ACCESS_WARNING}
+          </p>
+        )}
         {showSlides && (
           <ol
             data-lenis-prevent
@@ -398,10 +413,7 @@ function CourseSection({ course }: { course: AdminCourse }) {
 }
 
 export function CourseModulesAdmin() {
-  const { data, isLoading, isError, error } = useQuery<{
-    googleApiConfigured: boolean;
-    courses: AdminCourse[];
-  }>({
+  const { data, isLoading, isError, error } = useQuery<{ courses: AdminCourse[] }>({
     queryKey: QUERY_KEY,
     queryFn: async () => {
       const response = await fetch("/api/admin/course-modules");
@@ -438,14 +450,6 @@ export function CourseModulesAdmin() {
           </div>
         </div>
       </div>
-
-      {data && !data.googleApiConfigured && (
-        <div className="flex items-start gap-2 rounded-2xl border border-[#FBBF24]/20 bg-[#FBBF24]/5 px-5 py-4 text-sm text-[#FBBF24]">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-          GOOGLE_API_KEY is not set on the server, so decks can&apos;t be read yet. Add it to the
-          environment and restart the app.
-        </div>
-      )}
 
       {isLoading ? (
         <div className="grid place-items-center py-16">

@@ -38,7 +38,8 @@ interface EnrollmentInfo {
 interface ProfileResult {
   userId: string;
   enrollment: EnrollmentInfo | null;
-  courseAccess: string[];
+  /** Courses the user can open, purchased or granted by an admin. */
+  courses: { slug: string; name: string }[];
 }
 
 interface AdminResult {
@@ -64,11 +65,9 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
     user && profileResult?.userId === user.id
       ? profileResult.enrollment
       : null;
-  const hasCourses = Boolean(
-    user &&
-      profileResult?.userId === user.id &&
-      profileResult.courseAccess.length > 0
-  );
+  const courses =
+    user && profileResult?.userId === user.id ? profileResult.courses : [];
+  const hasCourses = courses.length > 0;
   const isAdmin = Boolean(
     user &&
       adminResult?.userId === user.id &&
@@ -115,7 +114,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
       setProfileResult({
         userId: user.id,
         enrollment: data.enrollment ?? null,
-        courseAccess: data.courseAccess ?? [],
+        courses: data.courses ?? [],
       });
     } catch {
       // Keep the navigation usable if profile loading fails.
@@ -138,7 +137,7 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
           setProfileResult({
             userId,
             enrollment: data.enrollment ?? null,
-            courseAccess: data.courseAccess ?? [],
+            courses: data.courses ?? [],
           });
         }
       })
@@ -416,7 +415,19 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
                       </div>
                     </div>
 
-                    {enrollment ? (
+                    {hasCourses ? (
+                      <div className="px-4 py-3 border-b border-white/[0.06]">
+                        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Your courses</div>
+                        <ul className="space-y-1.5">
+                          {courses.map((course) => (
+                            <li key={course.slug} className="flex items-center gap-2 text-xs text-white/80">
+                              <GraduationCap size={12} className="shrink-0 text-[#FBBF24]" />
+                              <span className="truncate">{course.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : enrollment ? (
                       <div className="px-4 py-3 border-b border-white/[0.06]">
                         <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Enrollment</div>
                         <div className="flex items-center gap-2 text-xs text-white/80 mb-1">
@@ -526,9 +537,18 @@ const Navbar = ({ onEnroll }: NavbarProps) => {
 
                   <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
                     <div className="text-[10px] uppercase tracking-wider text-white/30">
-                      Active enrollment
+                      {hasCourses ? "Your courses" : "Active enrollment"}
                     </div>
-                    {enrollment ? (
+                    {hasCourses ? (
+                      <ul className="mt-2 space-y-1.5">
+                        {courses.map((course) => (
+                          <li key={course.slug} className="flex items-center gap-2 text-sm text-white/85">
+                            <GraduationCap size={13} className="shrink-0 text-[#FBBF24]" />
+                            <span className="truncate">{course.name}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : enrollment ? (
                       <div className="mt-2">
                         <div className="flex items-center gap-2 text-sm text-white/85">
                           <CreditCard size={13} className="shrink-0 text-[#FBBF24]" />

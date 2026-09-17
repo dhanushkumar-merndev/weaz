@@ -8,6 +8,7 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   flexRender,
+  type CellContext,
   type SortingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -24,6 +25,8 @@ interface EnrollmentRow {
   created_at: string;
   programs: { name: string; duration: string; price_paise: number } | null;
 }
+
+type EnrollmentCell = CellContext<EnrollmentRow, unknown>;
 
 interface ApiResponse {
   data: EnrollmentRow[];
@@ -74,13 +77,13 @@ export default function AdminPage() {
 
   const columns = useMemo(
     () => [
-      { id: "name", header: "Name", accessorFn: (r: EnrollmentRow) => r.form_data?.name, cell: (i: any) => <div className="font-medium text-white truncate max-w-[160px]">{(i.getValue() as string) || "—"}</div> },
-      { id: "email", header: "Email", accessorFn: (r: EnrollmentRow) => r.form_data?.email, cell: (i: any) => <div className="text-white/60 truncate max-w-[180px]">{(i.getValue() as string) || "—"}</div> },
-      { id: "phone", header: "Phone", accessorFn: (r: EnrollmentRow) => r.form_data?.phone, cell: (i: any) => <div className="text-white/60 font-mono text-sm">{(i.getValue() as string) || "—"}</div> },
-      { id: "plan", header: "Plan", accessorFn: (r: EnrollmentRow) => r.programs?.name, cell: (i: any) => <div className="truncate max-w-[160px]"><span className="text-white/90 text-sm">{(i.getValue() as string) || "—"}</span></div> },
+      { id: "name", header: "Name", accessorFn: (r: EnrollmentRow) => r.form_data?.name, cell: (i: EnrollmentCell) => <div className="font-medium text-white truncate max-w-[160px]">{(i.getValue() as string) || "—"}</div> },
+      { id: "email", header: "Email", accessorFn: (r: EnrollmentRow) => r.form_data?.email, cell: (i: EnrollmentCell) => <div className="text-white/60 truncate max-w-[180px]">{(i.getValue() as string) || "—"}</div> },
+      { id: "phone", header: "Phone", accessorFn: (r: EnrollmentRow) => r.form_data?.phone, cell: (i: EnrollmentCell) => <div className="text-white/60 font-mono text-sm">{(i.getValue() as string) || "—"}</div> },
+      { id: "plan", header: "Plan", accessorFn: (r: EnrollmentRow) => r.programs?.name, cell: (i: EnrollmentCell) => <div className="truncate max-w-[160px]"><span className="text-white/90 text-sm">{(i.getValue() as string) || "—"}</span></div> },
       {
         id: "status", accessorKey: "status", header: "Status",
-        cell: (i: any) => {
+        cell: (i: EnrollmentCell) => {
           const s = i.getValue() as string;
           return (
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s === "paid" ? "bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20" : "bg-[#FBBF24]/10 text-[#FBBF24] border border-[#FBBF24]/20"}`}>
@@ -90,8 +93,8 @@ export default function AdminPage() {
           );
         },
       },
-      { id: "paid_at", accessorKey: "paid_at", header: "Paid Date", cell: (i: any) => { const v = i.getValue() as string | null; return <span className="text-white/50 text-sm whitespace-nowrap">{v ? new Date(v).toLocaleDateString("en-IN") : "—"}</span>; } },
-      { id: "duration", header: "Duration", accessorFn: (r: EnrollmentRow) => r.programs?.duration, cell: (i: any) => <span className="text-white/50 text-sm whitespace-nowrap">{(i.getValue() as string) || "—"}</span> },
+      { id: "paid_at", accessorKey: "paid_at", header: "Paid Date", cell: (i: EnrollmentCell) => { const v = i.getValue() as string | null; return <span className="text-white/50 text-sm whitespace-nowrap">{v ? new Date(v).toLocaleDateString("en-IN") : "—"}</span>; } },
+      { id: "duration", header: "Duration", accessorFn: (r: EnrollmentRow) => r.programs?.duration, cell: (i: EnrollmentCell) => <span className="text-white/50 text-sm whitespace-nowrap">{(i.getValue() as string) || "—"}</span> },
     ],
     []
   );

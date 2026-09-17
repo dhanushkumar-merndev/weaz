@@ -1,29 +1,30 @@
 import "server-only";
 
 import type { CourseSlide } from "@/lib/course-types";
+import { readPptxText } from "@/lib/pptx-text";
 
-// Reads a Google Slides deck with an API key. An API key can only read decks
-// shared as "Anyone with the link", so a successful read also proves students
-// will be able to open the embedded deck.
+// Reads a Google Slides deck by downloading its .pptx export. Google serves
+// that export without sign-in only for decks shared as "Anyone with the link",
+// so a successful read also proves students can open the embedded deck.
 
 export type GoogleSlidesErrorCode =
-  | "missing-key"
-  | "key-invalid"
-  | "api-disabled"
   | "not-public"
   | "not-found"
+  | "too-large"
+  | "unreadable"
   | "empty"
   | "failed";
 
+const MAX_DOWNLOAD_MB = 50;
+
 const ERROR_MESSAGES: Record<GoogleSlidesErrorCode, string> = {
-  "missing-key": "GOOGLE_API_KEY is not set on the server.",
-  "key-invalid": "The Google API key is invalid or restricted.",
-  "api-disabled": "Enable the Google Slides API for this API key in Google Cloud Console.",
   "not-public":
     "This deck isn't shared publicly. In Google Slides, set Share → General access → Anyone with the link · Viewer.",
   "not-found": "Google couldn't find this deck. Check the link.",
+  "too-large": `This deck is larger than ${MAX_DOWNLOAD_MB} MB. Remove large images or videos and try again.`,
+  unreadable: "Google returned a file that couldn't be read as slides.",
   empty: "This deck has no slides.",
-  failed: "Couldn't read the deck from Google. Try again.",
+  failed: "Couldn't download the deck from Google. Try again.",
 };
 
 export class GoogleSlidesError extends Error {
@@ -36,145 +37,127 @@ export class GoogleSlidesError extends Error {
   }
 }
 
-export function isGoogleSlidesConfigured() {
-  return Boolean(process.env.GOOGLE_API_KEY?.trim());
-}
-
-// The subset of the Slides API response this reader uses.
-interface TextContent {
-  textElements?: { textRun?: { content?: string } }[];
-}
-
-interface PageElement {
-  objectId?: string;
-  shape?: { placeholder?: { type?: string }; text?: TextContent };
-  table?: { tableRows?: { tableCells?: { text?: TextContent }[] }[] };
-  elementGroup?: { children?: PageElement[] };
-}
-
-interface Page {
-  pageElements?: PageElement[];
-  slideProperties?: {
-    notesPage?: {
-      pageElements?: PageElement[];
-      notesProperties?: { speakerNotesObjectId?: string };
-    };
-  };
-}
-
-interface Presentation {
-  title?: string;
-  slides?: Page[];
-}
-
+const PPTX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const MAX_DOWNLOAD_BYTES = MAX_DOWNLOAD_MB * 1024 * 1024;
 const LIMITS = { slides: 150, title: 200, points: 20, point: 400, description: 3000 };
-const TITLE_PLACEHOLDERS = new Set(["TITLE", "CENTERED_TITLE"]);
 
 const clip = (value: string, max: number) =>
   value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
 
-/** Paragraphs of a text box. Soft line breaks () stay within a paragraph. */
-function paragraphs(text: TextContent | undefined) {
-  return (text?.textElements ?? [])
-    .map((element) => element.textRun?.content ?? "")
-    .join("")
-    .split("\n")
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-}
+export const PUBLIC_EDIT_ACCESS_MESSAGE =
+  "Anyone with this link can edit these slides. In Google Slides set Share → Anyone with the link → Viewer, then try again.";
 
-function flatten(elements: PageElement[] = []): PageElement[] {
-  return elements.flatMap((element) =>
-    element.elementGroup ? flatten(element.elementGroup.children) : [element]
-  );
+/**
+ * Whether anyone with the link can edit the deck, read from the page Google
+ * shows a signed-out visitor: view-only access shows an access-level
+ * indicator, edit access shows the editing menus. Returns null when the page
+ * shows neither (for example if Google changes it) or can't be loaded.
+ */
+export async function checkPublicEditAccess(presentationId: string): Promise<boolean | null> {
+  try {
+    const response = await fetch(
+      `https://docs.google.com/presentation/d/${encodeURIComponent(presentationId)}/edit`,
+      {
+        cache: "no-store",
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
+    if (!response.ok) return null;
+    const html = await response.text();
+    if (html.includes('id="docs-access-level-indicator"')) return false;
+    if (html.includes('id="docs-insert-menu"')) return true;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Slide title placeholder → heading, every other text box and table row →
- * points, speaker notes → description.
+ * Google's page id for every slide, in order, read from the lightweight
+ * "htmlpresent" view, which links one image per slide as
+ * viewpage?pageid=<id>. Returns null if the page can't be read.
  */
-export function slideFromPage(page: Page, index: number): CourseSlide {
-  const elements = flatten(page.pageElements);
-  const titleElement = elements.find(
-    (element) =>
-      TITLE_PLACEHOLDERS.has(element.shape?.placeholder?.type ?? "") &&
-      paragraphs(element.shape?.text).length > 0
-  );
-
-  let title = titleElement ? paragraphs(titleElement.shape?.text).join(" ") : "";
-  const points: string[] = [];
-
-  for (const element of elements) {
-    if (element === titleElement) continue;
-    if (element.shape) points.push(...paragraphs(element.shape.text));
-    for (const row of element.table?.tableRows ?? []) {
-      const cells = (row.tableCells ?? [])
-        .map((cell) => paragraphs(cell.text).join(" "))
-        .filter(Boolean);
-      if (cells.length) points.push(cells.join(" · "));
-    }
+export async function fetchSlidePageIds(presentationId: string): Promise<string[] | null> {
+  try {
+    const response = await fetch(
+      `https://docs.google.com/presentation/d/${encodeURIComponent(presentationId)}/htmlpresent`,
+      {
+        cache: "no-store",
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
+    if (!response.ok) return null;
+    const html = await response.text();
+    const ids = [...html.matchAll(/viewpage\?pageid=([A-Za-z0-9_-]+)/g)].map(([, id]) => id);
+    return ids.length ? [...new Set(ids)] : null;
+  } catch {
+    return null;
   }
-
-  if (!title && points.length) title = points.shift()!;
-
-  const notesPage = page.slideProperties?.notesPage;
-  const notesId = notesPage?.notesProperties?.speakerNotesObjectId;
-  const notes = flatten(notesPage?.pageElements).find((element) => element.objectId === notesId);
-
-  return {
-    title: clip(title || `Slide ${index + 1}`, LIMITS.title),
-    description: clip(paragraphs(notes?.shape?.text).join("\n"), LIMITS.description),
-    points: points.slice(0, LIMITS.points).map((point) => clip(point, LIMITS.point)),
-  };
 }
 
 export async function fetchGoogleSlides(presentationId: string) {
-  const key = process.env.GOOGLE_API_KEY?.trim();
-  if (!key) throw new GoogleSlidesError("missing-key");
+  // These run alongside the download and never reject.
+  const publicEditAccess = checkPublicEditAccess(presentationId);
+  const pageIds = fetchSlidePageIds(presentationId);
 
   let response: Response;
   try {
     response = await fetch(
-      `https://slides.googleapis.com/v1/presentations/${encodeURIComponent(presentationId)}?key=${encodeURIComponent(key)}`,
-      { cache: "no-store", signal: AbortSignal.timeout(15_000) }
+      `https://docs.google.com/presentation/d/${encodeURIComponent(presentationId)}/export/pptx`,
+      { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(30_000) }
     );
   } catch (error) {
-    console.error("Google Slides API request did not complete", { presentationId, error });
+    console.error("Google Slides export request did not complete", { presentationId, error });
     throw new GoogleSlidesError("failed");
   }
 
+  if (response.status === 404) throw new GoogleSlidesError("not-found");
+  if (response.status === 401 || response.status === 403) throw new GoogleSlidesError("not-public");
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as {
-      error?: { status?: string; message?: string; details?: { reason?: string }[] };
-    } | null;
-    const message = body?.error?.message ?? "";
-    const reasons = (body?.error?.details ?? []).map((detail) => detail.reason ?? "");
-
-    if (reasons.some((reason) => reason.startsWith("API_KEY_")) || /API key not valid/i.test(message)) {
-      throw new GoogleSlidesError("key-invalid");
-    }
-    if (reasons.includes("SERVICE_DISABLED") || /has not been used|is disabled/i.test(message)) {
-      throw new GoogleSlidesError("api-disabled");
-    }
-    if (response.status === 404) throw new GoogleSlidesError("not-found");
-    if (response.status === 403 || body?.error?.status === "PERMISSION_DENIED") {
-      throw new GoogleSlidesError("not-public");
-    }
-
-    console.error("Google Slides API request failed", {
-      presentationId,
-      status: response.status,
-      message,
-    });
+    console.error("Google Slides export failed", { presentationId, status: response.status });
     throw new GoogleSlidesError("failed");
   }
 
-  const presentation = (await response.json()) as Presentation;
-  const pages = presentation.slides ?? [];
-  if (!pages.length) throw new GoogleSlidesError("empty");
+  // A deck that isn't public redirects to Google's sign-in page instead of a file.
+  if (!(response.headers.get("content-type") ?? "").startsWith(PPTX_CONTENT_TYPE)) {
+    await response.body?.cancel();
+    throw new GoogleSlidesError("not-public");
+  }
+  if (Number(response.headers.get("content-length") ?? 0) > MAX_DOWNLOAD_BYTES) {
+    await response.body?.cancel();
+    throw new GoogleSlidesError("too-large");
+  }
 
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length > MAX_DOWNLOAD_BYTES) throw new GoogleSlidesError("too-large");
+
+  let deck: ReturnType<typeof readPptxText>;
+  try {
+    deck = readPptxText(buffer, LIMITS.slides);
+  } catch (error) {
+    console.error("Could not read Google Slides export", { presentationId, error });
+    throw new GoogleSlidesError("unreadable");
+  }
+  if (!deck.slides.length) throw new GoogleSlidesError("empty");
+
+  // Page ids are only trusted when they line up one-to-one with the export.
+  const ids = await pageIds;
+  const idsMatch = ids !== null && ids.length === deck.slides.length;
+
+  const slides: CourseSlide[] = deck.slides.map((slide, index) => ({
+    title: clip(slide.title || `Slide ${index + 1}`, LIMITS.title),
+    description: clip(slide.description, LIMITS.description),
+    points: slide.points.slice(0, LIMITS.points).map((point) => clip(point, LIMITS.point)),
+    ...(idsMatch ? { googleSlideId: ids[index] } : {}),
+  }));
+
+  // Google's export usually leaves the document title empty.
   return {
-    title: clip(presentation.title?.trim() || "Untitled deck", 120),
-    slides: pages.slice(0, LIMITS.slides).map(slideFromPage),
+    title: deck.title ? clip(deck.title, 120) : "",
+    slides,
+    publicEditAccess: await publicEditAccess,
   };
 }

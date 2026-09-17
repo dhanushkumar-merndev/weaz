@@ -90,7 +90,11 @@ export function WebinarExperience() {
   const [summary, setSummary] = useState<RegistrationSummary | null>(null);
   // The entered details survive a lost free slot so nothing is retyped.
   const [form, setForm] = useState({ name: "", phone: "" });
-  const excluded = pathname.startsWith("/admin") || pathname.startsWith("/auth");
+  // The course player is a focused, full-height view with its own sticky header.
+  const excluded =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/learn/");
   const { data: webinar = null } = useActiveWebinar(!excluded);
 
   const { data: availability = null } = useWebinarAvailability(webinar?.id, {
